@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Service Catalog - Consultancy Billing System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Service Catalog Management</h1>
+        <p class="card-subtitle">Manage the master list of services offered by the consultancy</p>
+    </div>
+
+    <!-- Add New Service Form -->
+    <form method="POST" action="{{ url_for('add_catalog_service') }}"
+        style="background-color: #F0F8FF; padding: var(--spacing-lg); border-radius: var(--radius-md); margin-bottom: var(--spacing-xl);">
+        <h3 style="margin-bottom: var(--spacing-md); font-size: var(--font-size-lg); color: var(--primary-color);">➕ Add
+            New Service</h3>
+        <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: var(--spacing-md); align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="service_name">Service Name</label>
+                <input type="text" id="service_name" name="service_name" placeholder="Enter service name" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="default_charge">Default Charge (₹)</label>
+                <input type="number" id="default_charge" name="default_charge" step="0.01" value="0" min="0">
+            </div>
+            <button type="submit" class="btn btn-success">Add Service</button>
+        </div>
+    </form>
+
+    <!-- Services List -->
+    {% if services %}
+    <div style="margin-bottom: var(--spacing-md);">
+        <h3 style="font-size: var(--font-size-lg);">Available Services ({{ services|length }})</h3>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">Sr. No.</th>
+                <th style="width: 50%;">Service Name</th>
+                <th style="width: 20%;" class="text-right">Default Charge</th>
+                <th style="width: 15%;" class="text-center">Status</th>
+                <th style="width: 10%;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for service in services %}
+            <tr class="{% if service.is_active == 0 %}" style="opacity: 0.5;" {% endif %}">
+                <td>{{ loop.index }}</td>
+                <td>
+                    <strong>{{ service.service_name }}</strong>
+                    {% if service.default_charge == 0 %}
+                    <span class="badge badge-free">Free Service</span>
+                    {% endif %}
+                </td>
+                <td class="text-right">₹{{ "{:,.2f}".format(service.default_charge) }}</td>
+                <td class="text-center">
+                    {% if service.is_active == 1 %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-small"
+                        onclick="editService({{ service.id }}, '{{ service.service_name }}', {{ service.default_charge }}, {{ service.is_active }})">
+                        ✏️ Edit
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>📋 No services in catalog</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h2 style="color: var(--primary-color); margin-bottom: var(--spacing-lg);">✏️ Edit Service</h2>
+        <form method="POST" id="editForm">
+            <input type="hidden" id="edit_service_id" name="service_id">
+
+            <div class="form-group">
+                <label>Service Name</label>
+                <input type="text" id="edit_service_name" disabled style="background-color: var(--background-color);">
+            </div>
+
+            <div class="form-group">
+                <label for="edit_default_charge">Default Charge (₹)</label>
+                <input type="number" id="edit_default_charge" name="default_charge" step="0.01" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="edit_is_active">Status</label>
+                <select id="edit_is_active" name="is_active">
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: var(--spacing-md); margin-top: var(--spacing-xl);">
+                <button type="submit" class="btn btn-success">Save Changes</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function editService(id, name, charge, isActive) {
+        document.getElementById('edit_service_id').value = id;
+        document.getElementById('edit_service_name').value = name;
+        document.getElementById('edit_default_charge').value = charge;
+        document.getElementById('edit_is_active').value = isActive;
+        document.getElementById('editForm').action = `/service_catalog/edit/${id}`;
+        document.getElementById('editModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    window.onclick = function (event) {
+        const modal = document.getElementById('editModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+</script>
+
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Add Payment - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-header">
+        <h1 class="card-title">Record Payment</h1>
+        <p class="card-subtitle">
+            <strong>Customer:</strong> {{ customer.name }} |
+            <strong>Mobile:</strong> {{ customer.mobile }}
+        </p>
+    </div>
+
+    <form method="POST" action="{{ url_for('add_payment', customer_id=customer.id) }}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg);">
+            <div class="form-group">
+                <label for="date">Payment Date *</label>
+                <input type="date" id="date" name="date" required value="{{ today }}">
+            </div>
+
+            <div class="form-group">
+                <label for="amount">Amount Received (₹) *</label>
+                <input type="number" id="amount" name="amount" step="0.01" min="0" required placeholder="0.00"
+                    autofocus>
+            </div>
+        </div>
+
+        <div class="form-group" style="display: flex; gap: var(--spacing-md);">
+            <button type="submit" class="btn btn-success">💾 Record Payment</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Done</a>
+        </div>
+    </form>
+</div>
+
+{% if payments %}
+<div class="card" style="max-width: 800px; margin: var(--spacing-xl) auto 0;">
+    <div class="card-header">
+        <h2 class="card-title" style="font-size: var(--font-size-xl);">Payment History</h2>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 15%;">Sr. No.</th>
+                <th style="width: 45%;">Payment Date</th>
+                <th style="width: 40%;" class="text-right">Amount Received</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payments %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ payment.date }}</td>
+                <td class="text-right">₹{{ "{:,.2f}".format(payment.amount) }}</td>
+            </tr>
+            {% endfor %}
+            <tr style="background-color: var(--background-color); font-weight: 600;">
+                <td colspan="2" class="text-right"><strong>Total Payment Received:</strong></td>
+                <td class="text-right"><strong>₹{{ "{:,.2f}".format(payments|sum(attribute='amount')) }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="max-width: 800px; margin: var(--spacing-xl) auto 0;">
+    <div class="alert alert-info">
+        ℹ️ No payments recorded yet. Add your first payment using the form above.
+    </div>
+</div>
+{% endif %}
+
+<style>
+    @media (max-width: 768px) {
+        form>div[style*="grid"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+
+{% endblock %}

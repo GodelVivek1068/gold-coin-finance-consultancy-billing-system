@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Add Services - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 1000px; margin: 0 auto;">
+    <div class="card-header">
+        <h1 class="card-title">Add Services</h1>
+        <p class="card-subtitle">
+            <strong>Customer:</strong> {{ customer.name }} |
+            <strong>Mobile:</strong> {{ customer.mobile }}
+        </p>
+    </div>
+
+    <form method="POST" action="{{ url_for('add_services', customer_id=customer.id) }}">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-lg); align-items: end;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="service_select">Select Service *</label>
+                <select id="service_select" onchange="updateServiceCharge()">
+                    <option value="">-- Choose a service --</option>
+                    {% for catalog_service in catalog_services %}
+                    <option value="{{ catalog_service.service_name }}"
+                        data-charge="{{ catalog_service.default_charge }}">
+                        {{ catalog_service.service_name }}
+                        {% if catalog_service.default_charge == 0 %}(Free Service){% else %}(Default: ₹{{
+                        "%.0f"|format(catalog_service.default_charge) }}){% endif %}
+                    </option>
+                    {% endfor %}
+                    <option value="custom">-- Custom Service --</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="charge">Charge Amount (₹) *</label>
+                <input type="number" id="charge" name="charge" step="0.01" min="0" required placeholder="0.00">
+            </div>
+        </div>
+
+        <div class="form-group" id="custom_service_group" style="display: none;">
+            <label for="service_name_custom">Custom Service Name *</label>
+            <input type="text" id="service_name_custom" placeholder="Enter custom service name">
+        </div>
+
+        <input type="hidden" id="service_name" name="service_name">
+
+        <div
+            style="background-color: #F0F8FF; padding: var(--spacing-md); border-radius: var(--radius-md); margin-bottom: var(--spacing-lg);">
+            <small class="text-muted">
+                💡 <strong>Tip:</strong> Charge amount auto-fills from catalog but can be modified as needed.
+                Zero-charge services are fully supported.
+            </small>
+        </div>
+
+        <div class="form-group" style="display: flex; gap: var(--spacing-md);">
+            <button type="submit" class="btn btn-success">➕ Add Service</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Done</a>
+        </div>
+    </form>
+</div>
+
+{% if services %}
+<div class="card" style="max-width: 1000px; margin: var(--spacing-xl) auto 0;">
+    <div class="card-header">
+        <h2 class="card-title" style="font-size: var(--font-size-xl);">Services Added</h2>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">Sr. No.</th>
+                <th style="width: 55%;">Service Name</th>
+                <th style="width: 20%;" class="text-right">Charge</th>
+                <th style="width: 17%;" class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for service in services %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                    {{ service.service_name }}
+                    {% if service.charge == 0 %}
+                    <span class="badge badge-free">Free</span>
+                    {% endif %}
+                </td>
+                <td class="text-right">₹{{ "{:,.2f}".format(service.charge) }}</td>
+                <td class="text-center">
+                    <form method="POST" action="{{ url_for('delete_service', service_id=service.id) }}"
+                        style="display: inline;"
+                        onsubmit="return confirm('Are you sure you want to delete this service: {{ service.service_name }}?');">
+                        <button type="submit" class="btn btn-danger btn-small" data-tooltip="Remove this service">
+                            🗑️ Delete
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            <tr style="background-color: var(--background-color); font-weight: 600;">
+                <td colspan="2" class="text-right"><strong>Total Charges:</strong></td>
+                <td class="text-right"><strong>₹{{ "{:,.2f}".format(services|sum(attribute='charge')) }}</strong></td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="max-width: 1000px; margin: var(--spacing-xl) auto 0;">
+    <div class="alert alert-info">
+        ℹ️ No services added yet. Add your first service using the form above.
+    </div>
+</div>
+{% endif %}
+
+<script>
+    function updateServiceCharge() {
+        const select = document.getElementById('service_select');
+        const selectedOption = select.options[select.selectedIndex];
+        const charge = selectedOption.getAttribute('data-charge');
+        const serviceName = selectedOption.value;
+
+        const customGroup = document.getElementById('custom_service_group');
+        const customInput = document.getElementById('service_name_custom');
+        const serviceNameHidden = document.getElementById('service_name');
+        const chargeInput = document.getElementById('charge');
+
+        if (serviceName === 'custom') {
+            customGroup.style.display = 'block';
+            customInput.required = true;
+            serviceNameHidden.value = '';
+            chargeInput.value = '';
+            chargeInput.focus();
+        } else if (serviceName !== '') {
+            customGroup.style.display = 'none';
+            customInput.required = false;
+            serviceNameHidden.value = serviceName;
+            chargeInput.value = charge || '0';
+        } else {
+            customGroup.style.display = 'none';
+            customInput.required = false;
+            serviceNameHidden.value = '';
+            chargeInput.value = '';
+        }
+    }
+
+    document.getElementById('service_name_custom').addEventListener('input', function () {
+        document.getElementById('service_name').value = this.value;
+    });
+
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const serviceName = document.getElementById('service_name').value;
+        if (!serviceName) {
+            e.preventDefault();
+            alert('Please select a service or enter a custom service name');
+            return false;
+        }
+    });
+</script>
+
+{% endblock %}

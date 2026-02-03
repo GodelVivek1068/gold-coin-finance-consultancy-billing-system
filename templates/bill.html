@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger Account - {{ customer.name }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #F8F9FA;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        /* A4 Centered Card Layout */
+        .ledger-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        /* Header Section */
+        .ledger-header {
+            background-color: #1F3A5F;
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+
+        .ledger-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        /* Customer Details Panel */
+        .customer-details {
+            margin: 30px 30px 20px;
+            border: 2px solid #1F3A5F;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .customer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .customer-column {
+            padding: 20px;
+        }
+
+        .customer-column:first-child {
+            border-right: 2px solid #1F3A5F;
+            background-color: #F8F9FA;
+        }
+
+        .customer-row {
+            display: flex;
+            margin-bottom: 12px;
+        }
+
+        .customer-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .customer-label {
+            font-weight: 600;
+            color: #1F3A5F;
+            min-width: 130px;
+            font-size: 14px;
+        }
+
+        .customer-value {
+            color: #333333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* Ledger Table Section */
+        .ledger-section {
+            padding: 0 30px 20px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1F3A5F;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #C9A227;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        thead {
+            background-color: #1F3A5F;
+            color: white;
+        }
+
+        th {
+            padding: 14px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #E9ECEF;
+            color: #333333;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #F8F9FA;
+        }
+
+        tbody tr:hover {
+            background-color: #E3F2FD;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Total Row */
+        .total-row {
+            background-color: #1F3A5F !important;
+            color: white !important;
+            font-weight: 700;
+        }
+
+        .total-row td {
+            border-bottom: none;
+            padding: 14px 12px;
+            color: white !important;
+        }
+
+        .payment-row {
+            background-color: #27AE60 !important;
+            color: white !important;
+            font-weight: 500;
+        }
+
+        .payment-row td {
+            border-bottom-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .balance-row {
+            background-color: #FFF3CD !important;
+            font-weight: 700;
+            color: #1F3A5F;
+        }
+
+        .balance-row td {
+            border-bottom: 2px solid #C9A227;
+        }
+
+        /* Balance Summary */
+        .balance-summary {
+            text-align: center;
+            padding: 25px 30px;
+            background-color: #F8F9FA;
+            margin: 0 30px 30px;
+            border-radius: 6px;
+            border: 2px solid #C9A227;
+        }
+
+        .balance-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1F3A5F;
+        }
+
+        .balance-zero {
+            color: #27AE60;
+        }
+
+        .marathi-note {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Footer Branding */
+        .ledger-footer {
+            background: linear-gradient(135deg, #C9A227 0%, #B8923F 100%);
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 30px;
+            color: white;
+        }
+
+        .company-logo-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .company-logo-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .company-name {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.2;
+            color: white;
+        }
+
+        .company-tagline {
+            font-size: 11px;
+            margin-top: 5px;
+            opacity: 0.9;
+            text-align: center;
+        }
+
+        .company-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 12px;
+            align-items: center;
+        }
+
+        .company-info p {
+            margin: 4px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .company-info strong {
+            font-weight: 600;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding: 30px;
+            background-color: #F8F9FA;
+        }
+
+        .btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background-color: #2F80ED;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #1E6FDB;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(47, 128, 237, 0.3);
+        }
+
+        .btn-success {
+            background-color: #27AE60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: #6C757D;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5A6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background-color: #E74C3C;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #C0392B;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+
+            .ledger-container {
+                box-shadow: none;
+                border: 1px solid #333;
+                max-width: 100%;
+            }
+
+            .action-buttons {
+                display: none !important;
+            }
+
+            .ledger-footer {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            thead {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .total-row {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .customer-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .customer-column:first-child {
+                border-right: none;
+                border-bottom: 2px solid #1F3A5F;
+            }
+
+            .ledger-footer {
+                grid-template-columns: 1fr;
+            }
+
+            .company-info {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th,
+            td {
+                padding: 8px 6px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Action Buttons (Top - Hidden in Print) -->
+    <div class="action-buttons">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary" data-tooltip="Return to customer list">
+            ← Back to Home
+        </a>
+        <a href="{{ url_for('add_services', customer_id=customer.id) }}" class="btn btn-secondary"
+            data-tooltip="Add more services">
+            ➕ Add Services
+        </a>
+        <a href="{{ url_for('add_payment', customer_id=customer.id) }}" class="btn btn-secondary"
+            data-tooltip="Record new payment">
+            💰 Add Payment
+        </a>
+        <button id="deleteServicesBtn" onclick="toggleDeleteMode()" class="btn btn-danger"
+            data-tooltip="Delete services from ledger">
+            🗑️ Manage Services
+        </button>
+    </div>
+
+    <!-- Ledger Container -->
+    <div class="ledger-container">
+
+        <!-- Header -->
+        <div class="ledger-header">
+            <h1>LEDGER ACCOUNT</h1>
+        </div>
+
+        <!-- Customer Details Panel -->
+        <div class="customer-details">
+            <div class="customer-grid">
+                <div class="customer-column">
+                    <div class="customer-row">
+                        <div class="customer-label">Customer Name:</div>
+                        <div class="customer-value">{{ customer.name }}</div>
+                    </div>
+                    <div class="customer-row">
+                        <div class="customer-label">Mobile No.:</div>
+                        <div class="customer-value">{{ customer.mobile }}</div>
+                    </div>
+                    <div class="customer-row">
+                        <div class="customer-label">Bank Name:</div>
+                        <div class="customer-value">{{ customer.bank_name or '-' }}</div>
+                    </div>
+                </div>
+                <div class="customer-column">
+                    <div class="customer-row">
+                        <div class="customer-label">Date:</div>
+                        <div class="customer-value">{{ current_date }}</div>
+                    </div>
+                    <div class="customer-row">
+                        <div class="customer-label">Email:</div>
+                        <div class="customer-value">-</div>
+                    </div>
+                    <div class="customer-row">
+                        <div class="customer-label">Village:</div>
+                        <div class="customer-value">{{ customer.village or '-' }}</div>
+                    </div>
+                    <div class="customer-row">
+                        <div class="customer-label">Loan Amount:</div>
+                        <div class="customer-value">
+                            {% if customer.loan_amount > 0 %}
+                            ₹{{ "{:,.0f}".format(customer.loan_amount) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Services Form wrapping the ledger -->
+        <form id="deleteServicesForm" method="POST"
+            action="{{ url_for('delete_multiple_services', customer_id=customer.id) }}"
+            onsubmit="return confirmDeletion()">
+
+            <!-- Delete Services Panel (Hidden by default) -->
+            <div id="deleteServicesPanel"
+                style="display: none; margin: 0 0 20px 0; padding: 15px; background-color: #FFF3CD; border: 2px solid #FFC107; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <p style="margin: 0; font-weight: 600; color: #856404;">
+                        ✓ Select services to delete using checkboxes in the ledger below
+                    </p>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-danger">Delete Selected</button>
+                        <button type="button" onclick="toggleDeleteMode()" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ledger Table -->
+            <div class="ledger-section">
+                <h2 class="section-title">Transaction Ledger</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">Date</th>
+                            <th style="width: 38%;">Particulars</th>
+                            <th style="width: 13%;" class="text-right">Credit (₹)</th>
+                            <th style="width: 13%;" class="text-right">Received (₹)</th>
+                            <th style="width: 13%;" class="text-right">Balance (₹)</th>
+                            <th style="width: 13%;" class="text-center no-print">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set running_balance = 0 %}
+
+                        {# Display all services #}
+                        {% for service in services %}
+                        {% set running_balance = running_balance + service.charge %}
+                        <tr>
+                            <td>{{ service.created_at[:10] if service.created_at else '-' }}</td>
+                            <td><strong>{{ service.service_name }}</strong></td>
+                            <td class="text-right">{{ "{:,.0f}".format(service.charge) }}</td>
+                            <td class="text-right">-</td>
+                            <td class="text-right">{{ "{:,.0f}".format(running_balance) }}</td>
+                            <td class="text-center no-print">
+                                <input type="checkbox" name="service_ids" value="{{ service.id }}"
+                                    class="service-checkbox"
+                                    style="display: none; width: 18px; height: 18px; cursor: pointer;">
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        {# Total Services Row #}
+                        {% if services %}
+                        <tr class="total-row">
+                            <td colspan="2" class="text-right">TOTAL CHARGES</td>
+                            <td class="text-right">{{ "{:,.0f}".format(total_charges) }}</td>
+                            <td class="text-right">-</td>
+                            <td class="text-right">{{ "{:,.0f}".format(total_charges) }}</td>
+                            <td class="no-print"></td>
+                        </tr>
+                        {% endif %}
+
+                        {# Display all payments #}
+                        {% for payment in payments %}
+                        {% set running_balance = running_balance - payment.amount %}
+                        <tr class="payment-row">
+                            <td>{{ payment.date }}</td>
+                            <td><strong>Payment Received</strong></td>
+                            <td class="text-right">-</td>
+                            <td class="text-right">{{ "{:,.0f}".format(payment.amount) }}</td>
+                            <td class="text-right">{{ "{:,.0f}".format(running_balance) }}</td>
+                            <td class="no-print"></td>
+                        </tr>
+                        {% endfor %}
+
+                        {# Final Balance Row #}
+                        <tr class="balance-row" style="background-color: #FFF9E6 !important;">
+                            <td colspan="4" class="text-right"
+                                style="font-weight: 700; font-size: 16px; padding: 16px 12px; color: #1F3A5F !important; background-color: #FFF9E6 !important;">
+                                FINAL BALANCE DUE
+                            </td>
+                            <td class="text-right"
+                                style="font-weight: 700; font-size: 18px; padding: 16px 12px; color: #D97706 !important; background-color: #FFF9E6 !important;">
+                                ₹{{ "{:,.0f}".format(balance) }}
+                            </td>
+                            <td class="no-print" style="background-color: #FFF9E6 !important;"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Balance Summary -->
+            <div class="balance-summary">
+                <div class="balance-text {% if balance == 0 %}balance-zero{% endif %}">
+                    {% if balance == 0 %}
+                    ✓ एकूण येणे बाकी = 0/- (FULLY PAID)
+                    {% else %}
+                    Outstanding Balance: ₹{{ "{:,.0f}".format(balance) }}/-
+                    {% endif %}
+                </div>
+                <div class="marathi-note">चुकभूल क्षमस्व</div>
+            </div>
+
+            <!-- Company Branding Footer -->
+            <div class="ledger-footer">
+                <div class="company-logo-section">
+                    <div class="company-logo-icon">💼</div>
+                    <div class="company-name">Gold Coin<br>Finance</div>
+                    <div class="company-tagline">Consultancy Services</div>
+                </div>
+                <div class="company-info">
+                    <div>
+                        <p><strong>📍 Address:</strong></p>
+                        <p>भात्रखेडक्नागेनगर पार्श्वशाळा</p>
+                        <p>पाटणे शेरीबी, प्रतापगड</p>
+                        <p style="margin-top: 12px;"><strong>📱 Phone:</strong></p>
+                        <p>+91 8668600030</p>
+                        <p>+91 8149818882</p>
+                        <p style="margin-top: 12px;"><strong>✉️ Email:</strong></p>
+                        <p>goldcoinfinanceconsultancy@gmail.com</p>
+                    </div>
+                    <div>
+                        <p><strong>🔹 Services Offered:</strong></p>
+                        <p>• जनजातीय विकास विभाग</p>
+                        <p>• कृषि लोन सर्वगेरी</p>
+                        <p>• राज्य लोन पळीस</p>
+                        <p>• महाडीबीटी कामे</p>
+                        <p>• शेतकरी कामे</p>
+                        <p>• महिला बचत गट</p>
+                        <p>• डॉक्युमेंटेशन जेरॉक्स</p>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+        <!-- End of Delete Services Form -->
+
+    </div>
+
+    <!-- Action Buttons (Bottom - Hidden in Print) -->
+    <div class="action-buttons">
+        <button onclick="window.print()" class="btn btn-primary" data-tooltip="Print this ledger">
+            🖨️ Print Ledger
+        </button>
+        <a href="{{ url_for('download_pdf', customer_id=customer.id) }}" class="btn btn-success"
+            data-tooltip="Download as PDF file">
+            📥 Download PDF
+        </a>
+    </div>
+
+    <style>
+        /* Additional hint for users */
+        .action-buttons::after {
+            content: 'Tip: Use Ctrl+P or Cmd+P for quick printing';
+            display: block;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        @media print {
+            .action-buttons::after {
+                display: none;
+            }
+        }
+    </style>
+
+    <script>
+        let deleteMode = false;
+
+        function toggleDeleteMode() {
+            deleteMode = !deleteMode;
+            const panel = document.getElementById('deleteServicesPanel');
+            const checkboxes = document.querySelectorAll('.service-checkbox');
+            const btn = document.getElementById('deleteServicesBtn');
+
+            if (deleteMode) {
+                panel.style.display = 'block';
+                checkboxes.forEach(cb => cb.style.display = 'inline-block');
+                btn.textContent = '❌ Cancel Delete Mode';
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-secondary');
+            } else {
+                panel.style.display = 'none';
+                checkboxes.forEach(cb => {
+                    cb.style.display = 'none';
+                    cb.checked = false;
+                });
+                btn.textContent = '🗑️ Manage Services';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-danger');
+            }
+        }
+
+        function confirmDeletion() {
+            const checkboxes = document.querySelectorAll('.service-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one service to delete.');
+                return false;
+            }
+            const count = checkboxes.length;
+            const message = count === 1 ?
+                'Are you sure you want to delete 1 service?' :
+                `Are you sure you want to delete ${count} services?`;
+            return confirm(message + '\n\nThis action cannot be undone and will recalculate the ledger balance.');
+        }
+    </script>
+
+</body>
+
+</html>

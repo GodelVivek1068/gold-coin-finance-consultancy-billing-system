@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Consultancy Billing System{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <div class="brand-logo">💼</div>
+                <div class="brand-text">
+                    <div class="brand-name">Gold Coin Finance</div>
+                    <div class="brand-subtitle">Consultancy Services</div>
+                </div>
+            </div>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+                    <span class="nav-icon">🏠</span> Home
+                </a>
+                <a href="{{ url_for('service_catalog') }}"
+                    class="nav-link {% if request.endpoint == 'service_catalog' %}active{% endif %}">
+                    <span class="nav-icon">📋</span> Service Catalog
+                </a>
+                <a href="{{ url_for('add_customer') }}"
+                    class="nav-link {% if request.endpoint == 'add_customer' %}active{% endif %}">
+                    <span class="nav-icon">➕</span> Add Customer
+                </a>
+            </div>
+            <div class="nav-user">
+                <div class="user-icon">👤</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2026 Gold Coin Finance Consultancy. All rights reserved.</p>
+            <p class="footer-tagline">Professional Financial Services & Documentation</p>
+        </div>
+    </footer>
+</body>
+
+</html>

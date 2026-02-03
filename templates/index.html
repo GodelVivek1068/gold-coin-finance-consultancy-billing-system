@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Consultancy Billing System{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">Customer Management Dashboard</h1>
+        <p class="card-subtitle">Manage customers, services, and payments efficiently</p>
+    </div>
+
+    {% if customers %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">Sr. No.</th>
+                <th style="width: 22%;">Name</th>
+                <th style="width: 14%;">Mobile</th>
+                <th style="width: 12%;">Village</th>
+                <th style="width: 14%;">Bank Name</th>
+                <th style="width: 12%;" class="text-right">Loan Amount</th>
+                <th style="width: 18%;" class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td style="text-align: center;">{{ loop.index }}</td>
+                <td><strong>{{ customer.name }}</strong></td>
+                <td>{{ customer.mobile }}</td>
+                <td>{{ customer.village or '-' }}</td>
+                <td>{{ customer.bank_name or '-' }}</td>
+                <td class="text-right">
+                    {% if customer.loan_amount > 0 %}
+                    ₹{{ "{:,.0f}".format(customer.loan_amount) }}
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    <div style="display: inline-flex; gap: 6px; justify-content: center;">
+                        <a href="{{ url_for('add_services', customer_id=customer.id) }}"
+                            class="btn btn-success btn-small">
+                            ➕ Services
+                        </a>
+                        <a href="{{ url_for('add_payment', customer_id=customer.id) }}"
+                            class="btn btn-secondary btn-small">
+                            💰 Payment
+                        </a>
+                        <a href="{{ url_for('bill', customer_id=customer.id) }}" class="btn btn-small">
+                            📄 Ledger
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div
+        style="margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <p class="text-muted">
+            Total Customers: <strong class="counter"
+                style="color: var(--accent-color); font-size: var(--font-size-lg);">{{ customers|length }}</strong>
+        </p>
+        <a href="{{ url_for('add_customer') }}" class="btn btn-success">
+            ➕ Add New Customer
+        </a>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>📋 No customers found</p>
+        <p class="hint">Start by adding your first customer to begin managing billing and ledgers</p>
+        <a href="{{ url_for('add_customer') }}" class="btn btn-success">Add Your First Customer</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
