@@ -576,6 +576,8 @@ input::placeholder {
 }
 
 /* ===== RESPONSIVE DESIGN ===== */
+
+/* Tablet and Below (768px) */
 @media (max-width: 768px) {
     .nav-container {
         flex-wrap: wrap;
@@ -593,6 +595,7 @@ input::placeholder {
     .nav-link {
         width: 100%;
         justify-content: center;
+        padding: var(--spacing-md);
     }
 
     .main-content {
@@ -601,26 +604,217 @@ input::placeholder {
 
     .card {
         padding: var(--spacing-lg);
+        border-radius: var(--radius-md);
+    }
+
+    /* Responsive Table - Horizontal Scroll */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     table {
         font-size: var(--font-size-sm);
+        min-width: 600px; /* Prevent table from being too cramped */
     }
 
     th,
     td {
         padding: var(--spacing-sm);
+        font-size: var(--font-size-sm);
     }
 
+    /* Make action buttons stack */
     .action-buttons {
         flex-direction: column;
+        gap: var(--spacing-sm);
     }
 
+    /* Touch-friendly buttons (minimum 44px tap target) */
     .btn {
         width: 100%;
         justify-content: center;
+        min-height: 44px;
+        padding: var(--spacing-md) var(--spacing-lg);
+    }
+
+    .btn-small {
+        min-height: 40px;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    /* Better spacing for mobile */
+    .card-header {
+        padding-bottom: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .card-title {
+        font-size: var(--font-size-xl);
+    }
+
+    /* Form improvements for mobile */
+    .form-group {
+        margin-bottom: var(--spacing-md);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 16px; /* Prevents zoom on iOS */
+        min-height: 44px;
     }
 }
+
+/* Mobile (480px and below) */
+@media (max-width: 480px) {
+    :root {
+        --font-size-base: 0.9375rem; /* 15px */
+        --font-size-lg: 1rem; /* 16px */
+        --font-size-xl: 1.125rem; /* 18px */
+        --font-size-2xl: 1.25rem; /* 20px */
+        --spacing-lg: 1.25rem; /* 20px */
+        --spacing-xl: 1.5rem; /* 24px */
+    }
+
+    body {
+        padding: 0;
+    }
+
+    .nav-container {
+        padding: var(--spacing-sm);
+    }
+
+    .brand-name {
+        font-size: var(--font-size-base);
+    }
+
+    .brand-subtitle {
+        font-size: 0.625rem; /* 10px */
+    }
+
+    .brand-logo {
+        width: 40px;
+        height: 40px;
+        font-size: var(--font-size-xl);
+    }
+
+    .nav-link {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+    }
+
+    .main-content {
+        padding: var(--spacing-md) var(--spacing-sm);
+    }
+
+    .card {
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .card-title {
+        font-size: var(--font-size-lg);
+    }
+
+    /* Mobile table - make more compact */
+    table {
+        font-size: 0.75rem; /* 12px */
+    }
+
+    th,
+    td {
+        padding: 6px 4px;
+        white-space: nowrap;
+    }
+
+    /* Hide less important columns on very small screens */
+    th:nth-child(4),
+    td:nth-child(4),
+    th:nth-child(5),
+    td:nth-child(5) {
+        font-size: 0.6875rem; /* 11px */
+    }
+
+    /* Stack buttons inline on mobile to save space */
+    td .btn-small {
+        font-size: 0.625rem; /* 10px */
+        padding: 4px 8px;
+        min-height: 32px;
+    }
+
+    td > div {
+        gap: 4px !important;
+    }
+
+    /* Better footer for mobile */
+    .footer {
+        padding: var(--spacing-md);
+    }
+
+    .footer-content p {
+        font-size: var(--font-size-xs);
+    }
+}
+
+/* Landscape Mobile (up to 667px wide in landscape) */
+@media (max-width: 667px) and (orientation: landscape) {
+    .nav-container {
+        height: auto;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .nav-links {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: var(--spacing-sm);
+    }
+
+    .nav-link {
+        width: auto;
+        flex: 0 1 auto;
+    }
+}
+
+/* Tablet Landscape (769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .main-content {
+        max-width: 95%;
+    }
+
+    .nav-container {
+        max-width: 95%;
+    }
+
+    table {
+        font-size: var(--font-size-sm);
+    }
+}
+
+/* Large Desktop (1440px and above) */
+@media (min-width: 1440px) {
+    .main-content {
+        max-width: 1600px;
+    }
+
+    .nav-container {
+        max-width: 1600px;
+    }
+}
+
+/* High DPI Displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    /* Ensure crisp text on retina displays */
+    body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
 
 /* ===== UTILITY CLASSES ===== */
 .mt-1 {

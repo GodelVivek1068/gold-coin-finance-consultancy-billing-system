@@ -371,8 +371,8 @@ def download_pdf(customer_id):
     )
 
 def generate_ledger_pdf(buffer, customer, services, payments, total_charges, total_received, balance):
-    """Generate professional PDF ledger"""
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
+    """Generate professional PDF ledger with complete company branding"""
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=20, bottomMargin=20)
     
     # Container for the 'Flowable' objects
     elements = []
@@ -380,34 +380,69 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
     # Define styles
     styles = getSampleStyleSheet()
     
-    # Header style
-    header_style = ParagraphStyle(
-        'CustomHeader',
+    # Company Header with Branding
+    company_header_style = ParagraphStyle(
+        'CompanyHeader',
         parent=styles['Heading1'],
-        fontSize=18,
-        textColor=colors.HexColor('#2c3e50'),
-        spaceAfter=20,
+        fontSize=24,
+        textColor=colors.HexColor('#1F3A5F'),
+        spaceAfter=8,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold'
     )
     
-    # Add title
-    title = Paragraph("LEDGER ACCOUNT", header_style)
-    elements.append(title)
-    elements.append(Spacer(1, 12))
+    company_subtitle_style = ParagraphStyle(
+        'CompanySubtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#C9A227'),
+        spaceAfter=15,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
     
-    # Customer info table
+    # Add company branding
+    company_name = Paragraph("💼 GOLD COIN FINANCE", company_header_style)
+    elements.append(company_name)
+    company_tagline = Paragraph("Consultancy Services", company_subtitle_style)
+    elements.append(company_tagline)
+    
+    # Ledger title
+    ledger_title_style = ParagraphStyle(
+        'LedgerTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=colors.HexColor('#1F3A5F'),
+        spaceAfter=15,
+        spaceBefore=5,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        borderWidth=2,
+        borderColor=colors.HexColor('#C9A227'),
+        borderPadding=8,
+        backColor=colors.HexColor('#F8F9FA')
+    )
+    
+    title = Paragraph("LEDGER ACCOUNT", ledger_title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 15))
+    
+    # Customer info table with enhanced styling
     customer_data = [
         ['Customer Name:', customer['name'], 'Date:', datetime.now().strftime('%d/%m/%Y')],
-        ['Mobile No:', customer['mobile'], 'Village:', customer['village'] or '-'],
-        ['Bank Name:', customer['bank_name'] or '-', 'Loan Amount:', f"₹{customer['loan_amount']:.0f}" if customer['loan_amount'] else '-']
+        ['Mobile No.:', customer['mobile'], 'Village:', customer['village'] or '-'],
+        ['Bank Name:', customer['bank_name'] or '-', 'Loan Amount:', f"₹{customer['loan_amount']:,.0f}" if customer['loan_amount'] else '-']
     ]
     
     customer_table = Table(customer_data, colWidths=[1.5*inch, 2.5*inch, 1.3*inch, 1.7*inch])
     customer_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f5f5f5')),
-        ('BACKGROUND', (2, 0), (2, -1), colors.HexColor('#f5f5f5')),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#1F3A5F')),
+        ('BACKGROUND', (2, 0), (2, -1), colors.HexColor('#1F3A5F')),
+        ('BACKGROUND', (1, 0), (1, -1), colors.HexColor('#F8F9FA')),
+        ('BACKGROUND', (3, 0), (3, -1), colors.HexColor('#F8F9FA')),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.white),
+        ('TEXTCOLOR', (2, 0), (2, -1), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#1F3A5F')),
         ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
         ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, -1), 9),
@@ -421,27 +456,43 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
     elements.append(customer_table)
     elements.append(Spacer(1, 20))
     
-    # Ledger table
+    # Section title for ledger
+    section_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#1F3A5F'),
+        spaceAfter=10,
+        fontName='Helvetica-Bold'
+    )
+    section_title = Paragraph("Transaction Ledger", section_style)
+    elements.append(section_title)
+    
+    # Ledger table with all transaction details
     ledger_data = [['Date', 'Particulars', 'Credit (₹)', 'Received (₹)', 'Balance (₹)']]
     
     running_balance = 0
     
-    # Add services
+    # Add services with dates
     for service in services:
         running_balance += service['charge']
         date_str = service['created_at'][:10] if service['created_at'] else '-'
         ledger_data.append([
             date_str,
             service['service_name'],
-            f"{service['charge']:.0f}",
-            '',
-            f"{running_balance:.0f}"
+            f"{service['charge']:,.0f}",
+            '-',
+            f"{running_balance:,.0f}"
         ])
     
-    # Add total row if services exist
+    # Add total charges row if services exist
     if services:
         ledger_data.append([
-            '', 'Total', '', '', f"{total_charges:.0f}"
+            '', 
+            'TOTAL CHARGES', 
+            f"{total_charges:,.0f}",
+            '-', 
+            f"{total_charges:,.0f}"
         ])
     
     # Add payments
@@ -449,22 +500,27 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
         running_balance -= payment['amount']
         ledger_data.append([
             payment['date'],
-            'Payment',
-            '0',
-            f"{payment['amount']:.0f}",
-            f"{running_balance:.0f}"
+            'Payment Received',
+            '-',
+            f"{payment['amount']:,.0f}",
+            f"{running_balance:,.0f}"
         ])
     
-    # Add final balance
+    # Add final balance row
     ledger_data.append([
-        '', 'Balance', '', '', f"{balance:.0f}"
+        '', 
+        'FINAL BALANCE DUE', 
+        '',
+        '',
+        f"₹{balance:,.0f}"
     ])
     
-    ledger_table = Table(ledger_data, colWidths=[1.2*inch, 3*inch, 1.2*inch, 1.3*inch, 1.3*inch])
+    ledger_table = Table(ledger_data, colWidths=[1.1*inch, 2.8*inch, 1.3*inch, 1.3*inch, 1.5*inch])
     
     # Style for ledger table
     table_style = [
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+        # Header row styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F3A5F')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
@@ -472,27 +528,44 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
         ('FONTSIZE', (0, 0), (-1, 0), 10),
         ('FONTSIZE', (0, 1), (-1, -1), 9),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
         ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        # Alternate row colors for transactions
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#F8F9FA')]),
     ]
     
-    # Highlight total and balance rows
+    # Highlight total charges row if services exist
     total_row_index = len(services) + 1 if services else 1
-    balance_row_index = len(ledger_data) - 1
-    
     if services:
         table_style.extend([
-            ('BACKGROUND', (0, total_row_index), (-1, total_row_index), colors.HexColor('#f9f9f9')),
+            ('BACKGROUND', (0, total_row_index), (-1, total_row_index), colors.HexColor('#1F3A5F')),
+            ('TEXTCOLOR', (0, total_row_index), (-1, total_row_index), colors.white),
             ('FONTNAME', (0, total_row_index), (-1, total_row_index), 'Helvetica-Bold'),
         ])
     
+    # Highlight payments in green
+    payment_start = total_row_index + 1 if services else 1
+    payment_end = payment_start + len(payments) - 1
+    if payments:
+        for i in range(len(payments)):
+            row_idx = payment_start + i
+            table_style.extend([
+                ('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#D4EDDA')),
+                ('TEXTCOLOR', (0, row_idx), (-1, row_idx), colors.HexColor('#155724')),
+            ])
+    
+    # Highlight final balance row
+    balance_row_index = len(ledger_data) - 1
     table_style.extend([
-        ('BACKGROUND', (0, balance_row_index), (-1, balance_row_index), colors.HexColor('#fff3cd')),
+        ('BACKGROUND', (0, balance_row_index), (-1, balance_row_index), colors.HexColor('#FFF3CD')),
+        ('TEXTCOLOR', (0, balance_row_index), (-1, balance_row_index), colors.HexColor('#856404')),
         ('FONTNAME', (0, balance_row_index), (-1, balance_row_index), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, balance_row_index), (-1, balance_row_index), 11),
     ])
     
     ledger_table.setStyle(TableStyle(table_style))
@@ -500,33 +573,76 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
     elements.append(ledger_table)
     elements.append(Spacer(1, 20))
     
-    # Balance text
+    # Balance summary text
     balance_style = ParagraphStyle(
         'BalanceStyle',
         parent=styles['Normal'],
-        fontSize=12,
+        fontSize=13,
         fontName='Helvetica-Bold',
         alignment=TA_CENTER,
+        textColor=colors.HexColor('#1F3A5F'),
     )
     
     if balance == 0:
-        balance_text = Paragraph("एकूण येणे बाकी = 0/-", balance_style)
+        balance_text = Paragraph("✓ एकूण येणे बाकी = 0/- (FULLY PAID)", balance_style)
     else:
-        balance_text = Paragraph(f"Balance Due: ₹{balance:.0f}/-", balance_style)
+        balance_text = Paragraph(f"Outstanding Balance: ₹{balance:,.0f}/-", balance_style)
     
     elements.append(balance_text)
-    elements.append(Spacer(1, 10))
+    elements.append(Spacer(1, 8))
     
     # Marathi note
     note_style = ParagraphStyle(
         'NoteStyle',
         parent=styles['Italic'],
-        fontSize=10,
+        fontSize=9,
         alignment=TA_CENTER,
         textColor=colors.grey
     )
     note = Paragraph("चुकभूल क्षमस्व", note_style)
     elements.append(note)
+    elements.append(Spacer(1, 20))
+    
+    # Company Footer with complete contact details
+    footer_title_style = ParagraphStyle(
+        'FooterTitle',
+        parent=styles['Normal'],
+        fontSize=11,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#1F3A5F'),
+        spaceAfter=5
+    )
+    
+    footer_text_style = ParagraphStyle(
+        'FooterText',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.HexColor('#333333'),
+        leading=10
+    )
+    
+    # Company footer information
+    footer_data = [
+        [
+            Paragraph("<b>Gold Coin Finance Consultancy</b><br/><font size=7>लक्ष्मी नारायण निवास समोर,<br/>सावरकर नगर, विटा, ता. खानापूर,<br/>जि. सांगली. 415311</font>", footer_text_style),
+            Paragraph("<b>📱 Contact Numbers:</b><br/><font size=7>श्रीयश: +91 90216 74548<br/>रविकिरण: +91 84216 24116</font>", footer_text_style),
+            Paragraph("<b>🔹 Services Offered:</b><br/><font size=7>• अण्णासाहेब पाटील महामंडळ<br/>• योजने अंतर्गत कर्ज<br/>• पर्सनल लोन, बिजनेस लोन<br/>• मॉर्गेज लोन, होम लोन<br/>• व्हेईकल लोन, CMEGP/PMEGP</font>", footer_text_style),
+        ]
+    ]
+    
+    footer_table = Table(footer_data, colWidths=[2.5*inch, 2*inch, 3.5*inch])
+    footer_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8F9FA')),
+        ('BOX', (0, 0), (-1, -1), 2, colors.HexColor('#C9A227')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#E0E0E0')),
+    ]))
+    
+    elements.append(footer_table)
     
     # Build PDF
     doc.build(elements)
