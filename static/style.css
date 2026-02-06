@@ -1432,3 +1432,31 @@ button:focus,
         display: none;
     }
 }
+
+/* Service Catalog Responsive Styles */
+.service-form-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr auto;
+    gap: var(--spacing-md);
+    align-items: end;
+}
+
+.service-form-btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .service-form-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+    
+    .service-form-grid .form-group {
+        margin-bottom: var(--spacing-sm) !important;
+    }
+    
+    .service-form-btn {
+        width: 100%;
+        margin-top: var(--spacing-sm);
+    }
+}
