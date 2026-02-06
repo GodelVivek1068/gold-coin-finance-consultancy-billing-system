@@ -49,13 +49,13 @@
             </div>
 
             <div class="form-group">
-                <label for="loan_amount">Loan Amount (₹)</label>
+                <label for="loan_amount">Loan Amount (Rs.)</label>
                 <input type="number" id="loan_amount" name="loan_amount" step="0.01" min="0" placeholder="0.00">
             </div>
         </div>
 
         <div class="form-group" style="margin-top: var(--spacing-lg); display: flex; gap: var(--spacing-md);">
-            <button type="submit" class="btn btn-success">💾 Save Customer</button>
+            <button type="submit" class="btn btn-success">Save Customer</button>
             <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
