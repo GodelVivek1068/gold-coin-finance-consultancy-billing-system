@@ -35,8 +35,8 @@
                     <td>{{ customer.village or '-' }}</td>
                     <td>{{ customer.bank_name or '-' }}</td>
                     <td class="text-right">
-                        {% if customer.loan_amount > 0 %}
-                        ₹{{ "{:,.0f}".format(customer.loan_amount) }}
+                        {% if customer.loan_amount|float > 0 %}
+                        ₹{{ "{:,.0f}".format(customer.loan_amount|float) }}
                         {% else %}
                         -
                         {% endif %}
@@ -108,8 +108,8 @@
                 <div class="customer-card-row">
                     <span class="customer-card-label">💰 Loan Amount:</span>
                     <span class="customer-card-value">
-                        {% if customer.loan_amount > 0 %}
-                        ₹{{ "{:,.0f}".format(customer.loan_amount) }}
+                        {% if customer.loan_amount|float > 0 %}
+                        ₹{{ "{:,.0f}".format(customer.loan_amount|float) }}
                         {% else %}
                         -
                         {% endif %}

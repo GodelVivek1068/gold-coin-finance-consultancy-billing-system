@@ -470,8 +470,8 @@
                     <div class="customer-row">
                         <div class="customer-label">Loan Amount:</div>
                         <div class="customer-value">
-                            {% if customer.loan_amount > 0 %}
-                            ₹{{ "{:,.0f}".format(customer.loan_amount) }}
+                            {% if customer.loan_amount|float > 0 %}
+                            ₹{{ "{:,.0f}".format(customer.loan_amount|float) }}
                             {% else %}
                             -
                             {% endif %}

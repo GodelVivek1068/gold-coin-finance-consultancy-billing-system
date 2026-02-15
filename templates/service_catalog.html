@@ -64,7 +64,7 @@
                     </td>
                     <td>
                         <button class="btn btn-small"
-                            onclick="editService({{ service.id }}, '{{ service.service_name }}', {{ service.default_charge }}, {{ service.is_active }})">
+                            onclick="editService({{ service.id }}, {{ service.service_name|tojson }}, {{ service.default_charge }}, {{ service.is_active }})">
                             Edit
                         </button>
                     </td>
