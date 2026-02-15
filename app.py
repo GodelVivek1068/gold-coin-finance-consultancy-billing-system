@@ -56,98 +56,138 @@ def get_db_connection():
 
 def init_db():
     """Initialize database from schema file"""
-    if not os.path.exists(app.config['DATABASE']):
+    if USE_POSTGRESQL:
+        # PostgreSQL initialization
         conn = get_db_connection()
-        with open('database.sql', 'r', encoding='utf-8') as f:
-            conn.executescript(f.read())
-        conn.commit()
-        conn.close()
-        print("✓ Database initialized successfully")
-    else:
-        # Migrate existing database to add new tables/columns
-        conn = get_db_connection()
+        cursor = conn.cursor()
+        
         try:
-            # Check if service_catalog table exists
-            result = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='service_catalog'"
-            ).fetchone()
-            
-            if not result:
-                print("🔄 Migrating database to add service catalog...")
-                conn.executescript("""
-                    CREATE TABLE IF NOT EXISTS service_catalog (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        service_name TEXT NOT NULL UNIQUE,
-                        default_charge REAL DEFAULT 0,
-                        is_active INTEGER DEFAULT 1,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                    
-                    CREATE INDEX IF NOT EXISTS idx_service_catalog_active ON service_catalog(is_active);
-                    
-                    INSERT OR IGNORE INTO service_catalog (service_name, default_charge) VALUES
-                        ('Xerox', 0),
-                        ('ITR', 0),
-                        ('Search Report', 0),
-                        ('Valuation Report', 0),
-                        ('Plan Design & Estimate', 0),
-                        ('Rubber Stamp', 0),
-                        ('Agreement', 0),
-                        ('Typing', 0),
-                        ('Data Entry', 0),
-                        ('Stamp Duty', 0),
-                        ('Aadhaar-PAN Colour Xerox', 0),
-                        ('7/12', 0),
-                        ('Guarantor for Mortgage', 0),
-                        ('Affidavit', 0),
-                        ('Vendor Fee', 0),
-                        ('Dast Xerox', 0),
-                        ('Consultancy Charge (2%)', 0);
-                """)
+            # Read and execute database schema for PostgreSQL
+            with open('database.sql', 'r', encoding='utf-8') as f:
+                sql_content = f.read()
+                
+                # Convert SQLite syntax to PostgreSQL
+                sql_content = sql_content.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+                sql_content = sql_content.replace('REAL', 'NUMERIC')
+                sql_content = sql_content.replace('INSERT OR IGNORE', 'INSERT')
+                sql_content = sql_content.replace('IF NOT EXISTS', '')  # PostgreSQL handles this differently
+                
+                # Split into individual statements and execute
+                statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
+                
+                for statement in statements:
+                    if statement:
+                        try:
+                            cursor.execute(statement)
+                        except Exception as e:
+                            # Ignore errors for already existing tables/indexes
+                            if 'already exists' not in str(e).lower():
+                                print(f"⚠️ PostgreSQL statement warning: {e}")
+                
                 conn.commit()
-                print("✓ Service catalog added successfully")
-            
-            # Check if customer_date column exists
-            cursor = conn.execute("PRAGMA table_info(customers)")
-            columns = [col[1] for col in cursor.fetchall()]
-            if 'customer_date' not in columns:
-                print("🔄 Adding customer_date column...")
-                conn.execute("ALTER TABLE customers ADD COLUMN customer_date DATE")
-                conn.commit()
-                print("✓ Customer date field added successfully")
-            
-            # Check if business_name column exists
-            cursor = conn.execute("PRAGMA table_info(customers)")
-            columns = [col[1] for col in cursor.fetchall()]
-            if 'business_name' not in columns:
-                print("🔄 Adding business_name column...")
-                conn.execute("ALTER TABLE customers ADD COLUMN business_name TEXT")
-                conn.commit()
-                print("✓ Business name field added successfully")
-            
-            # Check if email column exists
-            cursor = conn.execute("PRAGMA table_info(customers)")
-            columns = [col[1] for col in cursor.fetchall()]
-            if 'email' not in columns:
-                print("🔄 Adding email column...")
-                conn.execute("ALTER TABLE customers ADD COLUMN email TEXT")
-                conn.commit()
-                print("✓ Email field added successfully")
-            
-            # Add indexes for customer search performance
-            try:
-                print("🔄 Adding customer search indexes...")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile)")
-                conn.commit()
-                print("✓ Customer search indexes added successfully")
-            except Exception as idx_error:
-                print(f"⚠️  Index creation note: {idx_error}")
+                print("✓ PostgreSQL database initialized successfully")
                 
         except Exception as e:
-            print(f"⚠️  Migration note: {e}")
+            print(f"⚠️ PostgreSQL initialization note: {e}")
+            conn.rollback()
         finally:
+            cursor.close()
             conn.close()
+            
+    else:
+        # SQLite initialization (original logic)
+        if not os.path.exists(app.config['DATABASE']):
+            conn = get_db_connection()
+            with open('database.sql', 'r', encoding='utf-8') as f:
+                conn.executescript(f.read())
+            conn.commit()
+            conn.close()
+            print("✓ Database initialized successfully")
+        else:
+            # Migrate existing database to add new tables/columns
+            conn = get_db_connection()
+            try:
+                # Check if service_catalog table exists
+                result = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='service_catalog'"
+                ).fetchone()
+                
+                if not result:
+                    print("🔄 Migrating database to add service catalog...")
+                    conn.executescript("""
+                        CREATE TABLE IF NOT EXISTS service_catalog (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            service_name TEXT NOT NULL UNIQUE,
+                            default_charge REAL DEFAULT 0,
+                            is_active INTEGER DEFAULT 1,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                        
+                        CREATE INDEX IF NOT EXISTS idx_service_catalog_active ON service_catalog(is_active);
+                        
+                        INSERT OR IGNORE INTO service_catalog (service_name, default_charge) VALUES
+                            ('Xerox', 0),
+                            ('ITR', 0),
+                            ('Search Report', 0),
+                            ('Valuation Report', 0),
+                            ('Plan Design & Estimate', 0),
+                            ('Rubber Stamp', 0),
+                            ('Agreement', 0),
+                            ('Typing', 0),
+                            ('Data Entry', 0),
+                            ('Stamp Duty', 0),
+                            ('Aadhaar-PAN Colour Xerox', 0),
+                            ('7/12', 0),
+                            ('Guarantor for Mortgage', 0),
+                            ('Affidavit', 0),
+                            ('Vendor Fee', 0),
+                            ('Dast Xerox', 0),
+                            ('Consultancy Charge (2%)', 0);
+                    """)
+                    conn.commit()
+                    print("✓ Service catalog added successfully")
+                
+                # Check if customer_date column exists
+                cursor = conn.execute("PRAGMA table_info(customers)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'customer_date' not in columns:
+                    print("🔄 Adding customer_date column...")
+                    conn.execute("ALTER TABLE customers ADD COLUMN customer_date DATE")
+                    conn.commit()
+                    print("✓ Customer date field added successfully")
+                
+                # Check if business_name column exists
+                cursor = conn.execute("PRAGMA table_info(customers)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'business_name' not in columns:
+                    print("🔄 Adding business_name column...")
+                    conn.execute("ALTER TABLE customers ADD COLUMN business_name TEXT")
+                    conn.commit()
+                    print("✓ Business name field added successfully")
+                
+                # Check if email column exists
+                cursor = conn.execute("PRAGMA table_info(customers)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'email' not in columns:
+                    print("🔄 Adding email column...")
+                    conn.execute("ALTER TABLE customers ADD COLUMN email TEXT")
+                    conn.commit()
+                    print("✓ Email field added successfully")
+                
+                # Add indexes for customer search performance
+                try:
+                    print("🔄 Adding customer search indexes...")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile)")
+                    conn.commit()
+                    print("✓ Customer search indexes added successfully")
+                except Exception as idx_error:
+                    print(f"⚠️  Index creation note: {idx_error}")
+                    
+            except Exception as e:
+                print(f"⚠️  Migration note: {e}")
+            finally:
+                conn.close()
 
 # Routes
 
