@@ -8,3 +8,12 @@ Password: VIxDw2IlVbwhDJ67ZDPSWtqLXKUstAg8
 Internal Database URL: postgresql://billing_db_3tw4_user:VIxDw2IlVbwhDJ67ZDPSWtqLXKUstAg8@dpg-d684v03nv86c73e7j6pg-a/billing_db_3tw4
 External Database URL: postgresql://billing_db_3tw4_user:VIxDw2IlVbwhDJ67ZDPSWtqLXKUstAg8@dpg-d684v03nv86c73e7j6pg-a.singapore-postgres.render.com/billing_db_3tw4
 PSQL Command: PGPASSWORD=VIxDw2IlVbwhDJ67ZDPSWtqLXKUstAg8 psql -h dpg-d684v03nv86c73e7j6pg-a.singapore-postgres.render.com -U billing_db_3tw4_user billing_db_3tw4
+
+
+
+
+
+
+Supabase pass: Pratikdb@12345
+Pratikdb@12345
+postgresql://postgres:Pratikdb@12345@db.lbdspzxxrqlppuryeuai.supabase.co:5432/postgres

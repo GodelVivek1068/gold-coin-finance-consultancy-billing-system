@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS customers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     mobile TEXT NOT NULL,
+    email TEXT,
+    business_name TEXT,
     village TEXT,
     bank_name TEXT,
     loan_amount REAL DEFAULT 0,
