@@ -77,19 +77,16 @@ def init_db():
                 
                 for statement in statements:
                     if statement:
-                        try:
-                            cursor.execute(statement)
-                        except Exception as e:
-                            # Ignore errors for already existing tables/indexes
-                            if 'already exists' not in str(e).lower():
-                                print(f"⚠️ PostgreSQL statement warning: {e}")
+                        # Execute statement - errors will propagate for debugging
+                        cursor.execute(statement)
                 
                 conn.commit()
                 print("✓ PostgreSQL database initialized successfully")
                 
         except Exception as e:
-            print(f"⚠️ PostgreSQL initialization note: {e}")
             conn.rollback()
+            # Re-raise the exception so you can see the full error details
+            raise
         finally:
             cursor.close()
             conn.close()
@@ -175,17 +172,11 @@ def init_db():
                     print("✓ Email field added successfully")
                 
                 # Add indexes for customer search performance
-                try:
-                    print("🔄 Adding customer search indexes...")
-                    conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
-                    conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile)")
-                    conn.commit()
-                    print("✓ Customer search indexes added successfully")
-                except Exception as idx_error:
-                    print(f"⚠️  Index creation note: {idx_error}")
-                    
-            except Exception as e:
-                print(f"⚠️  Migration note: {e}")
+                print("🔄 Adding customer search indexes...")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile)")
+                conn.commit()
+                print("✓ Customer search indexes added successfully")
             finally:
                 conn.close()
 
@@ -268,17 +259,13 @@ def add_catalog_service():
     default_charge = request.form.get('default_charge', 0)
     
     conn = get_db_connection()
-    try:
-        conn.execute(
-            'INSERT INTO service_catalog (service_name, default_charge) VALUES (?, ?)',
-            (service_name, default_charge)
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        # Service already exists
-        pass
-    finally:
-        conn.close()
+    # No error suppression - let IntegrityError propagate if service name is duplicate
+    conn.execute(
+        'INSERT INTO service_catalog (service_name, default_charge) VALUES (?, ?)',
+        (service_name, default_charge)
+    )
+    conn.commit()
+    conn.close()
     
     return redirect(url_for('service_catalog'))
 
@@ -809,7 +796,11 @@ if __name__ == '__main__':
     print("📍 Server: http://localhost:5000")
     print("="*50 + "\n")
     
-    # Use debug=False for production (PythonAnywhere, Render, etc.)
-    # Set to True only for local development
-    debug_mode = os.getenv('FLASK_DEBUG', 'False') == 'True'
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+    # Debug mode enabled by default for error visibility
+    # Set FLASK_DEBUG=False in production environment
+    debug_mode = os.getenv('FLASK_DEBUG', 'True') == 'True'
+    
+    # Get PORT from environment (for Render deployment) or default to 5000
+    port = int(os.getenv('PORT', 5000))
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)

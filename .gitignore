@@ -28,7 +28,10 @@ instance/
 .webassets-cache
 
 # Database
+*.db
 *.db-journal
+database.db
+billing.db
 
 # IDE
 .vscode/
@@ -44,6 +47,7 @@ Thumbs.db
 # Environment variables
 .env
 .flaskenv
+secret.py
 
 # Logs
 *.log
