@@ -46,7 +46,7 @@
             </thead>
             <tbody>
                 {% for service in services %}
-                <tr class="{% if service.is_active == 0 %}" style="opacity: 0.5;" {% endif %}">
+                <tr {% if service.is_active==0 %}style="opacity: 0.5;" {% endif %}>
                     <td>{{ loop.index }}</td>
                     <td>
                         <strong>{{ service.service_name }}</strong>
@@ -54,7 +54,7 @@
                         <span class="badge badge-free">Free Service</span>
                         {% endif %}
                     </td>
-                    <td class="text-right">Rs. {{ "{:,.2f}".format(service.default_charge) }}</td>
+                    <td class="text-right">Rs. {{ "{:,.2f}".format(service.default_charge or 0) }}</td>
                     <td class="text-center">
                         {% if service.is_active == 1 %}
                         <span class="badge badge-success">Active</span>
@@ -63,8 +63,9 @@
                         {% endif %}
                     </td>
                     <td>
-                        <button class="btn btn-small"
-                            onclick="editService({{ service.id }}, {{ service.service_name|tojson }}, {{ service.default_charge }}, {{ service.is_active }})">
+                        <button class="btn btn-small" data-id="{{ service.id }}" data-name="{{ service.service_name }}"
+                            data-charge="{{ service.default_charge or 0 }}" data-active="{{ service.is_active }}"
+                            onclick="openEditModal(this)">
                             Edit
                         </button>
                     </td>
@@ -114,7 +115,12 @@
 </div>
 
 <script>
-    function editService(id, name, charge, isActive) {
+    function openEditModal(btn) {
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        const charge = btn.dataset.charge;
+        const isActive = btn.dataset.active;
+
         document.getElementById('edit_service_id').value = id;
         document.getElementById('edit_service_name').value = name;
         document.getElementById('edit_default_charge').value = charge;
