@@ -16,169 +16,89 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = Flask(__name__)
 
-# Database Configuration - Auto-detect PostgreSQL or use SQLite
+# Database Configuration - Enforce PostgreSQL
 DATABASE_URL = os.getenv('DATABASE_URL')
-USE_POSTGRESQL = DATABASE_URL is not None
 
-if USE_POSTGRESQL:
-    # Fix Render's postgres:// to postgresql://
-    if DATABASE_URL.startswith('postgres://'):
-        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    try:
-        import psycopg2
-        import psycopg2.extras
-        print("✓ Using PostgreSQL database (Production Mode)")
-    except ImportError:
-        print("⚠️ psycopg2 not installed, falling back to SQLite")
-        USE_POSTGRESQL = False
-else:
-    print("✓ Using SQLite database (Development Mode)")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL is not set. Please set it in .env or environment variables.")
+
+# Fix Render's postgres:// to postgresql://
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+try:
+    import psycopg2
+    import psycopg2.extras
+    print("✓ Using PostgreSQL database (Production/Test Mode)")
+except ImportError:
+    msg = "psycopg2 not installed. It is required for PostgreSQL."
+    print(f"❌ {msg}")
+    raise ImportError(msg)
 
 app.config['DATABASE'] = 'database.db'
 
 # Database helper functions
 def get_db_connection():
-    """Get database connection - PostgreSQL or SQLite"""
-    if USE_POSTGRESQL:
-        import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL)
-        # Use RealDictCursor for dict-like access similar to sqlite3.Row
-        conn.cursor_factory = psycopg2.extras.RealDictCursor
-        return conn
-    else:
-        # SQLite for local development
-        conn = sqlite3.connect(app.config['DATABASE'])
-        conn.row_factory = sqlite3.Row  # Access columns by name
-        return conn
+    """Get database connection - PostgreSQL Only"""
+    import psycopg2
+    import psycopg2.extras
+    conn = psycopg2.connect(DATABASE_URL)
+    # Use RealDictCursor for dict-like access similar to sqlite3.Row
+    conn.cursor_factory = psycopg2.extras.RealDictCursor
+    return conn
 
 def init_db():
-    """Initialize database from schema file"""
-    if USE_POSTGRESQL:
-        # PostgreSQL initialization
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Read and execute database schema for PostgreSQL
-            with open('database.sql', 'r', encoding='utf-8') as f:
-                sql_content = f.read()
-                
-                # Convert SQLite syntax to PostgreSQL
-                sql_content = sql_content.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
-                sql_content = sql_content.replace('REAL', 'NUMERIC')
-                sql_content = sql_content.replace('INSERT OR IGNORE', 'INSERT')
-                sql_content = sql_content.replace('IF NOT EXISTS', '')  # PostgreSQL handles this differently
-                
-                # Split into individual statements and execute
-                statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
-                
-                for statement in statements:
-                    if statement:
-                        # Execute statement - errors will propagate for debugging
-                        cursor.execute(statement)
-                
-                conn.commit()
-                print("✓ PostgreSQL database initialized successfully")
-                
-        except Exception as e:
-            conn.rollback()
-            # Re-raise the exception so you can see the full error details
-            raise
-        finally:
-            cursor.close()
-            conn.close()
+    """Initialize database from schema file - PostgreSQL Only"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Read and execute database schema for PostgreSQL
+        with open('database.sql', 'r', encoding='utf-8') as f:
+            sql_content = f.read()
             
-    else:
-        # SQLite initialization (original logic)
-        if not os.path.exists(app.config['DATABASE']):
-            conn = get_db_connection()
-            with open('database.sql', 'r', encoding='utf-8') as f:
-                conn.executescript(f.read())
+            # Convert SQLite syntax to PostgreSQL
+            sql_content = sql_content.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+            sql_content = sql_content.replace('REAL', 'NUMERIC')
+            sql_content = sql_content.replace('INSERT OR IGNORE', 'INSERT')
+            # Note: We keep 'IF NOT EXISTS' as PostgreSQL supports it
+            
+            # Split into individual statements and execute
+            statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
+            
+            for statement in statements:
+                if statement:
+                    try:
+                        cursor.execute(statement)
+                    except Exception as e:
+                        # Handle expected errors for idempotency
+                        str_e = str(e).lower()
+                        # 42P07: relation already exists, 23505: unique violation
+                        if 'already exists' in str_e or 'unique constraint' in str_e:
+                            # Log as info, don't crash
+                            # print(f"ℹ️  DB Init: {str(e).splitlines()[0]}")
+                            pass 
+                        else:
+                            # Unexpected error - show it fully and crash
+                            print(f"⚠️  DB Init Error: {e}")
+                            raise
+            
             conn.commit()
-            conn.close()
-            print("✓ Database initialized successfully")
-        else:
-            # Migrate existing database to add new tables/columns
-            conn = get_db_connection()
-            try:
-                # Check if service_catalog table exists
-                result = conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name='service_catalog'"
-                ).fetchone()
-                
-                if not result:
-                    print("🔄 Migrating database to add service catalog...")
-                    conn.executescript("""
-                        CREATE TABLE IF NOT EXISTS service_catalog (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            service_name TEXT NOT NULL UNIQUE,
-                            default_charge REAL DEFAULT 0,
-                            is_active INTEGER DEFAULT 1,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        );
-                        
-                        CREATE INDEX IF NOT EXISTS idx_service_catalog_active ON service_catalog(is_active);
-                        
-                        INSERT OR IGNORE INTO service_catalog (service_name, default_charge) VALUES
-                            ('Xerox', 0),
-                            ('ITR', 0),
-                            ('Search Report', 0),
-                            ('Valuation Report', 0),
-                            ('Plan Design & Estimate', 0),
-                            ('Rubber Stamp', 0),
-                            ('Agreement', 0),
-                            ('Typing', 0),
-                            ('Data Entry', 0),
-                            ('Stamp Duty', 0),
-                            ('Aadhaar-PAN Colour Xerox', 0),
-                            ('7/12', 0),
-                            ('Guarantor for Mortgage', 0),
-                            ('Affidavit', 0),
-                            ('Vendor Fee', 0),
-                            ('Dast Xerox', 0),
-                            ('Consultancy Charge (2%)', 0);
-                    """)
-                    conn.commit()
-                    print("✓ Service catalog added successfully")
-                
-                # Check if customer_date column exists
-                cursor = conn.execute("PRAGMA table_info(customers)")
-                columns = [col[1] for col in cursor.fetchall()]
-                if 'customer_date' not in columns:
-                    print("🔄 Adding customer_date column...")
-                    conn.execute("ALTER TABLE customers ADD COLUMN customer_date DATE")
-                    conn.commit()
-                    print("✓ Customer date field added successfully")
-                
-                # Check if business_name column exists
-                cursor = conn.execute("PRAGMA table_info(customers)")
-                columns = [col[1] for col in cursor.fetchall()]
-                if 'business_name' not in columns:
-                    print("🔄 Adding business_name column...")
-                    conn.execute("ALTER TABLE customers ADD COLUMN business_name TEXT")
-                    conn.commit()
-                    print("✓ Business name field added successfully")
-                
-                # Check if email column exists
-                cursor = conn.execute("PRAGMA table_info(customers)")
-                columns = [col[1] for col in cursor.fetchall()]
-                if 'email' not in columns:
-                    print("🔄 Adding email column...")
-                    conn.execute("ALTER TABLE customers ADD COLUMN email TEXT")
-                    conn.commit()
-                    print("✓ Email field added successfully")
-                
-                # Add indexes for customer search performance
-                print("🔄 Adding customer search indexes...")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile)")
-                conn.commit()
-                print("✓ Customer search indexes added successfully")
-            finally:
-                conn.close()
+            print("✓ PostgreSQL database initialized/verified")
+            
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Database initialization failed: {e}")
+        raise
+    finally:
+        cursor.close()
+        conn.close()
 
 # Routes
 
@@ -207,7 +127,7 @@ def add_customer():
         # Insert into database
         conn = get_db_connection()
         conn.execute(
-            'INSERT INTO customers (name, mobile, email, business_name, village, bank_name, loan_amount, customer_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO customers (name, mobile, email, business_name, village, bank_name, loan_amount, customer_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
             (name, mobile, email, business_name, village, bank_name, loan_amount, customer_date)
         )
         conn.commit()
@@ -239,7 +159,7 @@ def customer_catalog():
         # Search by name or mobile (partial match)
         customers = conn.execute(
             '''SELECT * FROM customers 
-               WHERE name LIKE ? OR mobile LIKE ? 
+               WHERE name LIKE %s OR mobile LIKE %s 
                ORDER BY name''',
             (f'%{search_query}%', f'%{search_query}%')
         ).fetchall()
@@ -261,7 +181,7 @@ def add_catalog_service():
     conn = get_db_connection()
     # No error suppression - let IntegrityError propagate if service name is duplicate
     conn.execute(
-        'INSERT INTO service_catalog (service_name, default_charge) VALUES (?, ?)',
+        'INSERT INTO service_catalog (service_name, default_charge) VALUES (%s, %s)',
         (service_name, default_charge)
     )
     conn.commit()
@@ -277,7 +197,7 @@ def edit_catalog_service(service_id):
     
     conn = get_db_connection()
     conn.execute(
-        'UPDATE service_catalog SET default_charge = ?, is_active = ? WHERE id = ?',
+        'UPDATE service_catalog SET default_charge = %s, is_active = %s WHERE id = %s',
         (default_charge, is_active, service_id)
     )
     conn.commit()
@@ -311,7 +231,7 @@ def add_services(customer_id):
         
         # Insert service
         conn.execute(
-            'INSERT INTO services (customer_id, service_name, charge) VALUES (?, ?, ?)',
+            'INSERT INTO services (customer_id, service_name, charge) VALUES (%s, %s, %s)',
             (customer_id, service_name, charge)
         )
         conn.commit()
@@ -320,8 +240,8 @@ def add_services(customer_id):
         return redirect(url_for('add_services', customer_id=customer_id))
     
     # Get customer info and existing services
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
-    services = conn.execute('SELECT * FROM services WHERE customer_id = ?', (customer_id,)).fetchall()
+    customer = conn.execute('SELECT * FROM customers WHERE id = %s', (customer_id,)).fetchone()
+    services = conn.execute('SELECT * FROM services WHERE customer_id = %s', (customer_id,)).fetchall()
     
     # Get service catalog for dropdown
     catalog_services = conn.execute(
@@ -338,12 +258,12 @@ def delete_service(service_id):
     conn = get_db_connection()
     
     # Get customer_id before deleting
-    service = conn.execute('SELECT customer_id FROM services WHERE id = ?', (service_id,)).fetchone()
+    service = conn.execute('SELECT customer_id FROM services WHERE id = %s', (service_id,)).fetchone()
     
     if service:
         customer_id = service['customer_id']
         # Delete the service
-        conn.execute('DELETE FROM services WHERE id = ?', (service_id,))
+        conn.execute('DELETE FROM services WHERE id = %s', (service_id,))
         conn.commit()
         conn.close()
         
@@ -370,7 +290,7 @@ def delete_multiple_services(customer_id):
     
     # Delete each selected service
     for service_id in service_ids:
-        conn.execute('DELETE FROM services WHERE id = ? AND customer_id = ?', (service_id, customer_id))
+        conn.execute('DELETE FROM services WHERE id = %s AND customer_id = %s', (service_id, customer_id))
     
     conn.commit()
     conn.close()
@@ -384,11 +304,11 @@ def delete_customer(customer_id):
     conn = get_db_connection()
     
     # Get customer name for confirmation message
-    customer = conn.execute('SELECT name FROM customers WHERE id = ?', (customer_id,)).fetchone()
+    customer = conn.execute('SELECT name FROM customers WHERE id = %s', (customer_id,)).fetchone()
     
     if customer:
         # Delete the customer (CASCADE will delete associated services and payments)
-        conn.execute('DELETE FROM customers WHERE id = ?', (customer_id,))
+        conn.execute('DELETE FROM customers WHERE id = %s', (customer_id,))
         conn.commit()
         conn.close()
         
@@ -410,7 +330,7 @@ def add_payment(customer_id):
         
         # Insert payment
         conn.execute(
-            'INSERT INTO payments (customer_id, date, amount) VALUES (?, ?, ?)',
+            'INSERT INTO payments (customer_id, date, amount) VALUES (%s, %s, %s)',
             (customer_id, date, amount)
         )
         conn.commit()
@@ -419,8 +339,8 @@ def add_payment(customer_id):
         return redirect(url_for('add_payment', customer_id=customer_id))
     
     # Get customer info and existing payments
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
-    payments = conn.execute('SELECT * FROM payments WHERE customer_id = ? ORDER BY date DESC', (customer_id,)).fetchall()
+    customer = conn.execute('SELECT * FROM customers WHERE id = %s', (customer_id,)).fetchone()
+    payments = conn.execute('SELECT * FROM payments WHERE customer_id = %s ORDER BY date DESC', (customer_id,)).fetchall()
     conn.close()
     
     # Get today's date for default value
@@ -434,13 +354,13 @@ def bill(customer_id):
     conn = get_db_connection()
     
     # Get customer details
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
+    customer = conn.execute('SELECT * FROM customers WHERE id = %s', (customer_id,)).fetchone()
     
     # Get all services
-    services = conn.execute('SELECT * FROM services WHERE customer_id = ?', (customer_id,)).fetchall()
+    services = conn.execute('SELECT * FROM services WHERE customer_id = %s', (customer_id,)).fetchall()
     
     # Get all payments
-    payments = conn.execute('SELECT * FROM payments WHERE customer_id = ? ORDER BY date', (customer_id,)).fetchall()
+    payments = conn.execute('SELECT * FROM payments WHERE customer_id = %s ORDER BY date', (customer_id,)).fetchall()
     
     conn.close()
     
@@ -469,13 +389,13 @@ def download_pdf(customer_id):
     conn = get_db_connection()
     
     # Get customer details
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
+    customer = conn.execute('SELECT * FROM customers WHERE id = %s', (customer_id,)).fetchone()
     
     # Get all services
-    services = conn.execute('SELECT * FROM services WHERE customer_id = ?', (customer_id,)).fetchall()
+    services = conn.execute('SELECT * FROM services WHERE customer_id = %s', (customer_id,)).fetchall()
     
     # Get all payments
-    payments = conn.execute('SELECT * FROM payments WHERE customer_id = ? ORDER BY date', (customer_id,)).fetchall()
+    payments = conn.execute('SELECT * FROM payments WHERE customer_id = %s ORDER BY date', (customer_id,)).fetchall()
     
     conn.close()
     
