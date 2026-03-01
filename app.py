@@ -22,6 +22,10 @@ load_dotenv()
 app = Flask(__name__)
 app.config['DATABASE'] = 'database.db'
 
+# Initialize DB on every startup (gunicorn or direct)
+init_db_called = False  # guard so we only log once
+
+
 
 # ── Database helpers ─────────────────────────────────────────────────────────
 
@@ -83,6 +87,9 @@ def init_db():
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+# Always initialize the DB (works for both gunicorn and direct python run)
+init_db()
+
 
 @app.route('/')
 def index():
