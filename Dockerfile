@@ -16,14 +16,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy full project
 COPY . .
 
-# Initialize the SQLite database (creates database.db from database.sql)
-RUN python -c "from app import init_db; init_db()"
-
 # Railway injects $PORT — default to 8080
 ENV PORT=8080
 
 # Expose port
 EXPOSE 8080
 
-# Start the app using Railway's $PORT
+# Start the app — init_db() runs automatically at module load
 CMD gunicorn -w 2 -b 0.0.0.0:$PORT app:app

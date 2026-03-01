@@ -1,63 +1,55 @@
--- Consultancy Billing & Ledger System Database Schema
--- SQLite Database for storing customer, service, and payment information
+-- Consultancy Billing & Ledger System — PostgreSQL Schema
 
 -- Table: customers
--- Stores customer information
 CREATE TABLE IF NOT EXISTS customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    mobile TEXT NOT NULL,
-    email TEXT,
+    id            SERIAL PRIMARY KEY,
+    name          TEXT NOT NULL,
+    mobile        TEXT NOT NULL,
+    email         TEXT,
     business_name TEXT,
-    village TEXT,
-    bank_name TEXT,
-    loan_amount REAL DEFAULT 0,
+    village       TEXT,
+    bank_name     TEXT,
+    loan_amount   NUMERIC DEFAULT 0,
     customer_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table: service_catalog
--- Master list of all available services with default charges
 CREATE TABLE IF NOT EXISTS service_catalog (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    service_name TEXT NOT NULL UNIQUE,
-    default_charge REAL DEFAULT 0,
-    is_active INTEGER DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id             SERIAL PRIMARY KEY,
+    service_name   TEXT NOT NULL UNIQUE,
+    default_charge NUMERIC DEFAULT 0,
+    is_active      INTEGER DEFAULT 1,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table: services
--- Stores services provided to customers with charges
 CREATE TABLE IF NOT EXISTS services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_id INTEGER NOT NULL,
+    id           SERIAL PRIMARY KEY,
+    customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     service_name TEXT NOT NULL,
-    charge REAL NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    charge       NUMERIC NOT NULL DEFAULT 0,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table: payments
--- Stores payment installments made by customers
 CREATE TABLE IF NOT EXISTS payments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_id INTEGER NOT NULL,
-    date DATE NOT NULL,
-    amount REAL NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    id          SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    date        DATE NOT NULL,
+    amount      NUMERIC NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_services_customer ON services(customer_id);
-CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_services_customer      ON services(customer_id);
+CREATE INDEX IF NOT EXISTS idx_payments_customer      ON payments(customer_id);
 CREATE INDEX IF NOT EXISTS idx_service_catalog_active ON service_catalog(is_active);
-CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name);
-CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile);
+CREATE INDEX IF NOT EXISTS idx_customers_name         ON customers(name);
+CREATE INDEX IF NOT EXISTS idx_customers_mobile       ON customers(mobile);
 
--- Insert predefined services into catalog
--- These are the standard services offered by the consultancy
-INSERT OR IGNORE INTO service_catalog (service_name, default_charge) VALUES
+-- Seed service catalog (skip duplicates)
+INSERT INTO service_catalog (service_name, default_charge) VALUES
     ('Xerox', 0),
     ('ITR', 0),
     ('Search Report', 0),
@@ -74,4 +66,5 @@ INSERT OR IGNORE INTO service_catalog (service_name, default_charge) VALUES
     ('Affidavit', 0),
     ('Vendor Fee', 0),
     ('Dast Xerox', 0),
-    ('Consultancy Charge (2%)', 0);
+    ('Consultancy Charge (2%)', 0)
+ON CONFLICT (service_name) DO NOTHING;

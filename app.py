@@ -1,10 +1,11 @@
 ﻿"""
 Consultancy Billing & Ledger System
-Flask web application — SQLite Local Mode (no external database required)
+Flask web application — PostgreSQL mode (Railway / Supabase compatible)
 """
 
-import sqlite3
 import os
+import psycopg2
+import psycopg2.extras
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from datetime import datetime
 from io import BytesIO
@@ -20,81 +21,51 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.config['DATABASE'] = 'database.db'
-
-# Initialize DB on every startup (gunicorn or direct)
-init_db_called = False  # guard so we only log once
+DATABASE_URL = os.getenv('DATABASE_URL', '')
 
 
 
 # ── Database helpers ─────────────────────────────────────────────────────────
 
 def get_db_connection():
-    """Return a SQLite connection with dict-like row access."""
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA foreign_keys = ON')
+    """Return a psycopg2 connection with dict-like row access."""
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = False
     return conn
 
 
+def get_cursor(conn):
+    """Return a RealDictCursor so rows behave like dicts (same as sqlite3.Row)."""
+    return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
 def init_db():
-    """Initialize / migrate the SQLite database from database.sql."""
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA foreign_keys = ON')
-
-    existing_tables = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table'"
-    ).fetchall()
-
-    if not existing_tables:
-        with open('database.sql', 'r', encoding='utf-8') as f:
-            conn.executescript(f.read())
-        conn.commit()
-        print("✓ SQLite database initialized from schema")
-    else:
-        # ── Migrations for existing databases ─────────────────────────────────
-
-        has_catalog = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='service_catalog'"
-        ).fetchone()
-        if not has_catalog:
-            conn.executescript("""
-                CREATE TABLE IF NOT EXISTS service_catalog (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    service_name TEXT NOT NULL UNIQUE,
-                    default_charge REAL DEFAULT 0,
-                    is_active INTEGER DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-                CREATE INDEX IF NOT EXISTS idx_service_catalog_active ON service_catalog(is_active);
-            """)
-            conn.commit()
-            print("✓ service_catalog table created")
-
-        cols = [row[1] for row in conn.execute("PRAGMA table_info(customers)").fetchall()]
-        if 'customer_date' not in cols:
-            conn.execute("ALTER TABLE customers ADD COLUMN customer_date DATE")
-            conn.commit()
-            print("✓ customer_date column added")
-
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_mobile ON customers(mobile)")
-        conn.commit()
-        print("✓ SQLite database verified / migrated")
-
+    """Initialize the PostgreSQL database from database.sql (safe to re-run)."""
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = True
+    cur = conn.cursor()
+    with open(os.path.join(os.path.dirname(__file__), 'database.sql'), 'r', encoding='utf-8') as f:
+        cur.execute(f.read())
+    cur.close()
     conn.close()
+    print("✓ PostgreSQL database initialized / verified")
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 # Always initialize the DB (works for both gunicorn and direct python run)
-init_db()
+if DATABASE_URL:
+    init_db()
+else:
+    print("⚠️  DATABASE_URL not set — skipping init_db (set it in .env or Railway Variables)")
 
 
 @app.route('/')
 def index():
-    conn      = get_db_connection()
-    customers = conn.execute('SELECT * FROM customers ORDER BY created_at DESC').fetchall()
+    conn = get_db_connection()
+    cur  = get_cursor(conn)
+    cur.execute('SELECT * FROM customers ORDER BY created_at DESC')
+    customers = cur.fetchall()
+    cur.close()
     conn.close()
     return render_template('index.html', customers=customers)
 
@@ -112,13 +83,15 @@ def add_customer():
         customer_date = request.form.get('customer_date') or datetime.now().strftime('%Y-%m-%d')
 
         conn = get_db_connection()
-        conn.execute(
+        cur  = get_cursor(conn)
+        cur.execute(
             '''INSERT INTO customers
                (name, mobile, email, business_name, village, bank_name, loan_amount, customer_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)''',
             (name, mobile, email, business_name, village, bank_name, loan_amount, customer_date)
         )
         conn.commit()
+        cur.close()
         conn.close()
         return redirect(url_for('index'))
 
@@ -128,8 +101,11 @@ def add_customer():
 
 @app.route('/service_catalog')
 def service_catalog():
-    conn     = get_db_connection()
-    services = conn.execute('SELECT * FROM service_catalog ORDER BY service_name').fetchall()
+    conn = get_db_connection()
+    cur  = get_cursor(conn)
+    cur.execute('SELECT * FROM service_catalog ORDER BY service_name')
+    services = cur.fetchall()
+    cur.close()
     conn.close()
     return render_template('service_catalog.html', services=services)
 
@@ -138,15 +114,18 @@ def service_catalog():
 def customer_catalog():
     search_query = request.args.get('search', '').strip()
     conn = get_db_connection()
+    cur  = get_cursor(conn)
 
     if search_query:
-        customers = conn.execute(
-            'SELECT * FROM customers WHERE name LIKE ? OR mobile LIKE ? ORDER BY name',
+        cur.execute(
+            "SELECT * FROM customers WHERE name ILIKE %s OR mobile ILIKE %s ORDER BY name",
             (f'%{search_query}%', f'%{search_query}%')
-        ).fetchall()
+        )
     else:
-        customers = conn.execute('SELECT * FROM customers ORDER BY name').fetchall()
+        cur.execute('SELECT * FROM customers ORDER BY name')
 
+    customers = cur.fetchall()
+    cur.close()
     conn.close()
     return render_template('customer_catalog.html', customers=customers, search_query=search_query)
 
@@ -157,11 +136,13 @@ def add_catalog_service():
     default_charge = request.form.get('default_charge', 0) or 0
 
     conn = get_db_connection()
-    conn.execute(
-        'INSERT INTO service_catalog (service_name, default_charge) VALUES (?, ?)',
+    cur  = get_cursor(conn)
+    cur.execute(
+        'INSERT INTO service_catalog (service_name, default_charge) VALUES (%s, %s)',
         (service_name, default_charge)
     )
     conn.commit()
+    cur.close()
     conn.close()
     return redirect(url_for('service_catalog'))
 
@@ -172,21 +153,24 @@ def edit_catalog_service(service_id):
     is_active      = request.form.get('is_active', 1)
 
     conn = get_db_connection()
-    conn.execute(
-        'UPDATE service_catalog SET default_charge = ?, is_active = ? WHERE id = ?',
+    cur  = get_cursor(conn)
+    cur.execute(
+        'UPDATE service_catalog SET default_charge = %s, is_active = %s WHERE id = %s',
         (default_charge, is_active, service_id)
     )
     conn.commit()
+    cur.close()
     conn.close()
     return redirect(url_for('service_catalog'))
 
 
 @app.route('/api/services')
 def api_services():
-    conn     = get_db_connection()
-    services = conn.execute(
-        'SELECT * FROM service_catalog WHERE is_active = 1 ORDER BY service_name'
-    ).fetchall()
+    conn = get_db_connection()
+    cur  = get_cursor(conn)
+    cur.execute('SELECT * FROM service_catalog WHERE is_active = 1 ORDER BY service_name')
+    services = cur.fetchall()
+    cur.close()
     conn.close()
     return jsonify([{
         'id':     s['id'],
@@ -198,23 +182,27 @@ def api_services():
 @app.route('/add_services/<int:customer_id>', methods=['GET', 'POST'])
 def add_services(customer_id):
     conn = get_db_connection()
+    cur  = get_cursor(conn)
 
     if request.method == 'POST':
         service_name = request.form['service_name']
         charge       = request.form.get('charge', 0) or 0
-        conn.execute(
-            'INSERT INTO services (customer_id, service_name, charge) VALUES (?, ?, ?)',
+        cur.execute(
+            'INSERT INTO services (customer_id, service_name, charge) VALUES (%s, %s, %s)',
             (customer_id, service_name, charge)
         )
         conn.commit()
+        cur.close()
         conn.close()
         return redirect(url_for('add_services', customer_id=customer_id))
 
-    customer         = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
-    services         = conn.execute('SELECT * FROM services WHERE customer_id = ?', (customer_id,)).fetchall()
-    catalog_services = conn.execute(
-        'SELECT * FROM service_catalog WHERE is_active = 1 ORDER BY service_name'
-    ).fetchall()
+    cur.execute('SELECT * FROM customers WHERE id = %s', (customer_id,))
+    customer = cur.fetchone()
+    cur.execute('SELECT * FROM services WHERE customer_id = %s', (customer_id,))
+    services = cur.fetchall()
+    cur.execute('SELECT * FROM service_catalog WHERE is_active = 1 ORDER BY service_name')
+    catalog_services = cur.fetchall()
+    cur.close()
     conn.close()
 
     return render_template('add_services.html',
@@ -223,19 +211,23 @@ def add_services(customer_id):
 
 @app.route('/delete_service/<int:service_id>', methods=['POST'])
 def delete_service(service_id):
-    conn    = get_db_connection()
-    service = conn.execute('SELECT customer_id FROM services WHERE id = ?', (service_id,)).fetchone()
+    conn = get_db_connection()
+    cur  = get_cursor(conn)
+    cur.execute('SELECT customer_id FROM services WHERE id = %s', (service_id,))
+    service = cur.fetchone()
 
     if service:
         customer_id = service['customer_id']
-        conn.execute('DELETE FROM services WHERE id = ?', (service_id,))
+        cur.execute('DELETE FROM services WHERE id = %s', (service_id,))
         conn.commit()
+        cur.close()
         conn.close()
         referrer = request.referrer or ''
         if 'bill' in referrer:
             return redirect(url_for('bill', customer_id=customer_id))
         return redirect(url_for('add_services', customer_id=customer_id))
 
+    cur.close()
     conn.close()
     return "Service not found", 404
 
@@ -247,24 +239,30 @@ def delete_multiple_services(customer_id):
         return redirect(url_for('bill', customer_id=customer_id))
 
     conn = get_db_connection()
+    cur  = get_cursor(conn)
     for sid in service_ids:
-        conn.execute('DELETE FROM services WHERE id = ? AND customer_id = ?', (sid, customer_id))
+        cur.execute('DELETE FROM services WHERE id = %s AND customer_id = %s', (sid, customer_id))
     conn.commit()
+    cur.close()
     conn.close()
     return redirect(url_for('bill', customer_id=customer_id))
 
 
 @app.route('/delete_customer/<int:customer_id>', methods=['POST'])
 def delete_customer(customer_id):
-    conn     = get_db_connection()
-    customer = conn.execute('SELECT name FROM customers WHERE id = ?', (customer_id,)).fetchone()
+    conn = get_db_connection()
+    cur  = get_cursor(conn)
+    cur.execute('SELECT name FROM customers WHERE id = %s', (customer_id,))
+    customer = cur.fetchone()
 
     if customer:
-        conn.execute('DELETE FROM customers WHERE id = ?', (customer_id,))
+        cur.execute('DELETE FROM customers WHERE id = %s', (customer_id,))
         conn.commit()
+        cur.close()
         conn.close()
         return redirect(url_for('index'))
 
+    cur.close()
     conn.close()
     return "Customer not found", 404
 
@@ -272,22 +270,25 @@ def delete_customer(customer_id):
 @app.route('/add_payment/<int:customer_id>', methods=['GET', 'POST'])
 def add_payment(customer_id):
     conn = get_db_connection()
+    cur  = get_cursor(conn)
 
     if request.method == 'POST':
         date   = request.form['date']
         amount = request.form['amount']
-        conn.execute(
-            'INSERT INTO payments (customer_id, date, amount) VALUES (?, ?, ?)',
+        cur.execute(
+            'INSERT INTO payments (customer_id, date, amount) VALUES (%s, %s, %s)',
             (customer_id, date, amount)
         )
         conn.commit()
+        cur.close()
         conn.close()
         return redirect(url_for('add_payment', customer_id=customer_id))
 
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
-    payments  = conn.execute(
-        'SELECT * FROM payments WHERE customer_id = ? ORDER BY date DESC', (customer_id,)
-    ).fetchall()
+    cur.execute('SELECT * FROM customers WHERE id = %s', (customer_id,))
+    customer = cur.fetchone()
+    cur.execute('SELECT * FROM payments WHERE customer_id = %s ORDER BY date DESC', (customer_id,))
+    payments = cur.fetchall()
+    cur.close()
     conn.close()
 
     today = datetime.now().strftime('%Y-%m-%d')
@@ -297,12 +298,15 @@ def add_payment(customer_id):
 @app.route('/bill/<int:customer_id>')
 def bill(customer_id):
     conn = get_db_connection()
+    cur  = get_cursor(conn)
 
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
-    services  = conn.execute('SELECT * FROM services WHERE customer_id = ?', (customer_id,)).fetchall()
-    payments  = conn.execute(
-        'SELECT * FROM payments WHERE customer_id = ? ORDER BY date', (customer_id,)
-    ).fetchall()
+    cur.execute('SELECT * FROM customers WHERE id = %s', (customer_id,))
+    customer = cur.fetchone()
+    cur.execute('SELECT * FROM services WHERE customer_id = %s', (customer_id,))
+    services = cur.fetchall()
+    cur.execute('SELECT * FROM payments WHERE customer_id = %s ORDER BY date', (customer_id,))
+    payments = cur.fetchall()
+    cur.close()
     conn.close()
 
     total_charges  = sum(s['charge'] for s in services)
@@ -323,12 +327,15 @@ def bill(customer_id):
 @app.route('/download_pdf/<int:customer_id>')
 def download_pdf(customer_id):
     conn = get_db_connection()
+    cur  = get_cursor(conn)
 
-    customer = conn.execute('SELECT * FROM customers WHERE id = ?', (customer_id,)).fetchone()
-    services  = conn.execute('SELECT * FROM services WHERE customer_id = ?', (customer_id,)).fetchall()
-    payments  = conn.execute(
-        'SELECT * FROM payments WHERE customer_id = ? ORDER BY date', (customer_id,)
-    ).fetchall()
+    cur.execute('SELECT * FROM customers WHERE id = %s', (customer_id,))
+    customer = cur.fetchone()
+    cur.execute('SELECT * FROM services WHERE customer_id = %s', (customer_id,))
+    services = cur.fetchall()
+    cur.execute('SELECT * FROM payments WHERE customer_id = %s ORDER BY date', (customer_id,))
+    payments = cur.fetchall()
+    cur.close()
     conn.close()
 
     total_charges  = sum(s['charge'] for s in services)
@@ -515,13 +522,11 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    init_db()
-
     print("\n" + "=" * 50)
     print("🏢 Consultancy Billing & Ledger System")
     print("=" * 50)
     print("📍 Server:   http://localhost:5000")
-    print("🗄️  Database: SQLite  (database.db — local file)")
+    print("🗄️  Database: PostgreSQL (DATABASE_URL)")
     print("=" * 50 + "\n")
 
     debug_mode = os.getenv('FLASK_DEBUG', 'True').lower() in ('true', '1')
