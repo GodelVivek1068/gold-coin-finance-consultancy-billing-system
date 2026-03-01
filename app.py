@@ -56,7 +56,13 @@ def init_db():
 if DATABASE_URL:
     init_db()
 else:
-    print("⚠️  DATABASE_URL not set — skipping init_db (set it in .env or Railway Variables)")
+    print("[WARNING] DATABASE_URL not set - skipping init_db (set it in Railway Variables)")
+
+
+@app.route('/health')
+def health():
+    """Lightweight healthcheck — no DB required."""
+    return 'OK', 200
 
 
 @app.route('/')
