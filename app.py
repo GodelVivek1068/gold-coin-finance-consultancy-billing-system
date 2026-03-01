@@ -48,7 +48,7 @@ def init_db():
         cur.execute(f.read())
     cur.close()
     conn.close()
-    print("✓ PostgreSQL database initialized / verified")
+    print("[OK] PostgreSQL database initialized / verified")
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -523,10 +523,10 @@ def generate_ledger_pdf(buffer, customer, services, payments, total_charges, tot
 
 if __name__ == '__main__':
     print("\n" + "=" * 50)
-    print("🏢 Consultancy Billing & Ledger System")
+    print("  Consultancy Billing & Ledger System")
     print("=" * 50)
-    print("📍 Server:   http://localhost:5000")
-    print("🗄️  Database: PostgreSQL (DATABASE_URL)")
+    print("  Server:   http://localhost:5000")
+    print("  Database: PostgreSQL (DATABASE_URL)")
     print("=" * 50 + "\n")
 
     debug_mode = os.getenv('FLASK_DEBUG', 'True').lower() in ('true', '1')
