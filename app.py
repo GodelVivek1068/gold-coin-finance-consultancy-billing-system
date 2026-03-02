@@ -67,7 +67,7 @@ def health():
 
 @app.route('/')
 def home():
-    return "Server Running ✅"
+    return "Gold Coin Billing API Running ✅"
 
 
 @app.route('/dashboard')
