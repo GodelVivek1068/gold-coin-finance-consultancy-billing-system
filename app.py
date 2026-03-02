@@ -66,6 +66,11 @@ def health():
 
 
 @app.route('/')
+def home():
+    return "Server Running ✅"
+
+
+@app.route('/dashboard')
 def index():
     conn = get_db_connection()
     cur  = get_cursor(conn)
