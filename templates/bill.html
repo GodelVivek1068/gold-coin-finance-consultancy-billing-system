@@ -521,7 +521,7 @@
                         {% for service in services %}
                         {% set running_balance = running_balance + service.charge %}
                         <tr>
-                            <td>{{ service.created_at[:10] if service.created_at else '-' }}</td>
+                            <td>{{ (service.created_at | string)[:10] if service.created_at else '-' }}</td>
                             <td><strong>{{ service.service_name }}</strong></td>
                             <td class="text-right">{{ "{:,.0f}".format(service.charge) }}</td>
                             <td class="text-right">-</td>
