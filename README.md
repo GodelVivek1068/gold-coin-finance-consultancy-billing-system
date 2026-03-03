@@ -1,7 +1,6 @@
-
 # Consultancy Billing & Ledger System
 
-A simple, beginner-friendly web-based billing system built with Flask and SQLite to manage customer billing, services, and payments.
+A simple, beginner-friendly web-based billing system built with Flask to manage customer billing, services, and payments.
 
 ## 📋 Features
 
@@ -12,180 +11,126 @@ A simple, beginner-friendly web-based billing system built with Flask and SQLite
 - ✅ Print-ready bills with Marathi support
 - ✅ Clean professional UI
 - ✅ No authentication required (single-user system)
+- ✅ **PostgreSQL integration** via environment variables
+- ✅ Deployment-ready via Gunicorn
+- ✅ Supports gap year logic and certificate uploads for academic records
 
 ## 🛠️ Tech Stack
 
 - **Backend:** Python (Flask)
-- **Database:** SQLite
-- **Frontend:** HTML5, CSS3 (No JavaScript frameworks)
+- **Database:** PostgreSQL (Production) / SQLite (Fallback, if applicable)
+- **Frontend:** HTML5, CSS3, Vanilla JS
+- **Server:** Gunicorn
 
 ## 📂 Project Structure
 
 ```
 billing-system/
 │
-├── app.py                  # Flask application
-├── database.db            # SQLite database (auto-created)
-├── database.sql           # Database schema
-├── requirements.txt       # Python dependencies
-├── README.md             # This file
+├── app.py                  # Main Flask application logic
+├── requirements.txt        # Python dependencies (Flask, psycopg2, gunicorn, etc)
+├── README.md               # Project documentation
+├── DEPLOYMENT.md           # Instructions for deployment (Railway, etc.)
+├── .env                    # Environment variables (DATABASE_URL configured here)
 │
-├── templates/
-│   ├── base.html         # Base template
-│   ├── index.html        # Home page (customer list)
-│   ├── add_customer.html # Add customer form
-│   ├── add_services.html # Add services form
-│   ├── add_payment.html  # Add payment form
-│   └── bill.html         # Bill/invoice page
+├── database.sql            # Schema commands for PostgreSQL
+├── updation.txt            # Roadmap and pending improvements
+│
+├── templates/              # HTML Templates (Jinja2)
+│   ├── base.html           # Base template
+│   ├── index.html          # Dashboard (customer list)
+│   ├── add_customer.html   # Add customer form
+│   ├── add_services.html   # Add services form
+│   ├── add_payment.html    # Add payment form
+│   ├── edit.html           # Edit details & handle gap year certificates
+│   └── bill.html           # Print-optimized billing layout
 │
 └── static/
-    └── style.css         # Stylesheet
+    ├── style.css           # Styling
+    └── uploads/            # Directories for user-uploaded certificates
 ```
 
 ## 🚀 Setup & Installation
 
 ### Prerequisites
 
-- Python 3.7 or higher installed on your system
+- Python 3.7+
+- PostgreSQL (if running postgres locally, otherwise use remote DB URL)
 
 ### Steps to Run
 
-1. **Navigate to the project directory:**
+1. **Navigate to the project directory/Clone:**
    ```bash
-   cd "c:\01 Pratik\CLG\Projects\BILL SYSTEM\billing-system"
+   cd "gold-coin-finance-consultancy-billing-system"
    ```
 
-2. **Install Flask:**
-   ```bash
-   pip install flask
-   ```
-   
-   Or using requirements.txt:
+2. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run the application:**
+3. **Configure Environment:**
+   Create a `.env` file in the root directory mapping the database. For example:
+   ```env
+   DATABASE_URL=postgresql://user:password@hostname:port/dbname
+   ```
+
+4. **Run the application:**
+   Using the Flask Dev server:
    ```bash
    python app.py
    ```
+   Or using Gunicorn (production mode):
+   ```bash
+   gunicorn -w 1 -b 0.0.0.0:5000 app:app
+   ```
 
-4. **Open your browser:**
+5. **Open your browser:**
    Navigate to `http://localhost:5000`
-
-The database will be created automatically on first run.
 
 ## 📖 How to Use
 
 ### 1. Add a Customer
-- Click "Add New Customer" from the home page
-- Fill in customer details (name, mobile, village, bank info)
-- Click "Save Customer"
+- Click "Add New Customer" from the home page.
+- Fill in customer details (name, mobile, village, bank info) and track gap years & upload certificates.
+- Click "Save Customer".
 
 ### 2. Add Services
-- From the customer list, click "Add Services" for a customer
-- Enter service name and charge amount
-- Click "Add Service" (you can add multiple services)
-- Click "Done" when finished
+- From the customer list, click "Add Services" for a customer.
+- Enter service name and charge amount.
+- Click "Done" when finished.
 
 ### 3. Record Payments
-- From the customer list, click "Add Payment" for a customer
-- Select payment date (defaults to today)
-- Enter payment amount
-- Click "Record Payment"
-- You can add multiple payments as installments
+- Set the payment date and enter the respective amount.
 
 ### 4. View & Print Bill
-- From the customer list, click "View Bill" for a customer
-- Review the complete bill with:
-  - Customer details
-  - Services provided
-  - Payment history
-  - Total charges, received amount, and balance
-- Click "Print Bill" to print
+- Provides complete history of details, including overall balance.
+- Standard Marathi notes available ("चुकभूल क्षमस्व").
+- Click "Print Bill" for an optimized layout.
 
-## 🧮 Business Logic
+## 💾 Database 
 
-```
-Total Charges = SUM(all service charges)
-Total Received = SUM(all payments)
-Balance = Total Charges - Total Received
+The system utilizes PostgreSQL for a robust, persistent data layer ideal for production environments like Railway.
 
-If Balance == 0:
-  Display: "एकूण येणे बाकी = 0/-"
-```
+**Connection Mechanism:** 
+The application connects automatically if it detects a `DATABASE_URL` environment variable via `psycopg2`.
 
-## 📄 Bill Format
+## 🔧 Deployment Summary
 
-The bill includes:
-- Consultancy header with date
-- Customer information (name, mobile, village, bank, loan amount)
-- Services table with itemized charges
-- Payment history table
-- Summary section with totals and balance
-- Marathi note: "चुकभूल क्षमस्व"
-- Print button
+This project can be easily pushed to platforms like Railway or Render:
+- Add a PostgreSQL instance plugin.
+- Add `DATABASE_URL` to variables and watch it configure via `.env`.
+- Ensure the start command is `gunicorn app:app`.
 
-## 🎨 UI Features
+*(For comprehensive steps, refer to `DEPLOYMENT.md`)*
 
-- Clean white background with professional styling
-- Table-based layouts for easy reading
-- Print-optimized CSS (hides navigation/buttons when printing)
-- Responsive design
-- Color-coded balance (green for paid, red for pending)
+## 📝 Roadmap & V2 Updates
 
-## 💾 Database Schema
-
-### customers
-- id (Primary Key)
-- name
-- mobile
-- village
-- bank_name
-- loan_amount
-
-### services
-- id (Primary Key)
-- customer_id (Foreign Key)
-- service_name
-- charge
-
-### payments
-- id (Primary Key)
-- customer_id (Foreign Key)
-- date
-- amount
-
-## 🔧 Troubleshooting
-
-**Issue:** Flask not found
-- **Solution:** Run `pip install flask`
-
-**Issue:** Database error
-- **Solution:** Delete `database.db` file and restart the application
-
-**Issue:** Port 5000 already in use
-- **Solution:** Change port in `app.py` (line: `app.run(port=5000)`)
-
-## 📝 Notes
-
-- This is a beginner-friendly, single-user system
-- No authentication or user management
-- Data is stored locally in SQLite database
-- All code is well-commented for learning purposes
-
-## 👨‍💻 For Developers
-
-The code follows a simple MVC-like pattern:
-- **Model:** SQLite database (database.sql)
-- **View:** HTML templates (templates/)
-- **Controller:** Flask routes (app.py)
-
-Each file contains detailed comments explaining the functionality.
+Refinements for subsequent upgrades are listed in `updation.txt`, such as:
+- Dashboard statistical calculation cards.
+- Search bar directly accessible on the main dashboard index.
+- Modal confirmations for delete actions instead of browser alerts.
 
 ---
 
 **Developed as a simple consultancy billing solution** 🏢
-=======
-# gold-coin-finance-consultancy-billing-system
->>>>>>> 7bb6e1e480ac498361c6ab2f50cc5725785ef8d0
